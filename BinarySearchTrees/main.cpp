@@ -6,7 +6,9 @@
 #include <string>
 
 #include "BST.h"
+#include "Util.h"
 
+// The tree containing the words
 BST* words = new BST();
 
 static const std::string COMMAND_INSERT = "insert";
@@ -27,7 +29,7 @@ struct Command
 	std::string arguments;
 };
 
-/* Gets the next Command from standard input */
+// Gets the next Command from standard input
 Command getNextCommand()
 {
 	auto result = Command();
@@ -38,18 +40,26 @@ Command getNextCommand()
 	auto index_of_separator = line.find(" ");
 	if(index_of_separator == std::string::npos)
 	{
+		// The command name needs to be case-insensitive
+		str_to_lower(line);
+
 		result.name = line;
 		result.arguments = "";
 	}
 	else
 	{
-		result.name = line.substr(0, index_of_separator);
+		// The command name needs to be case-insensitive
+		auto name = line.substr(0, index_of_separator);
+		str_to_lower(name);
+
+		result.name = name;
 		result.arguments = line.substr(index_of_separator + 1);
 	}
 
 	return result;
 }
 
+// Prints the help documentation for the commands
 void printHelp()
 {
 	std::cout << "Recognized commands:" << std::endl;
@@ -101,8 +111,10 @@ int main()
 	Command current_command;
 	do
 	{
+		// Get the next command from stdin
 		current_command = getNextCommand();
 
+		// And process it
 		if(current_command.name == COMMAND_INSERT)
 		{
 			auto result = words->add(current_command.arguments);
@@ -206,6 +218,7 @@ int main()
 		
 	} while (current_command.name != COMMAND_EXIT);
 
+	// Free the word tree
 	delete words;
 
     return 0;
