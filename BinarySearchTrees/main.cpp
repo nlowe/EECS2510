@@ -106,7 +106,7 @@ int main()
 		if(current_command.name == COMMAND_INSERT)
 		{
 			auto result = words->add(current_command.arguments);
-			std::cout << result->content << " " << result->count << std::endl;
+			std::cout << result->key << " " << result->count << std::endl;
 		}
 		else if(current_command.name == COMMAND_DELETE)
 		{
@@ -122,13 +122,13 @@ int main()
 				word->count--;
 
 				// Save the word and occurrance count in case we delete it from the tree in the next step
-				auto content = word->content;
+				auto content = word->key;
 				auto count = word->count;
 				
 				if(word->count == 0)
 				{
 					// If this is the last occurrance of the word, remove it from the tree
-					words->remove(word->content);
+					words->remove(word->key);
 				}
 
 				std::cout << content << " " << count << std::endl;
@@ -149,7 +149,7 @@ int main()
 			}
 			else
 			{
-				std::cout << word->content << " " << word->count << std::endl;
+				std::cout << word->key << " " << word->count << std::endl;
 			}
 		}
 		else if(current_command.name == COMMAND_MAX)
@@ -162,7 +162,7 @@ int main()
 			}
 			else
 			{
-				std::cout << word->content << " " << word->count << std::endl;
+				std::cout << word->key << " " << word->count << std::endl;
 			}
 		}
 		else if(current_command.name == COMMAND_NEXT)
@@ -175,7 +175,7 @@ int main()
 			}
 			else
 			{
-				std::cout << word->content << " " << word->count << std::endl;
+				std::cout << word->key << " " << word->count << std::endl;
 			}
 		}
 		else if(current_command.name == COMMAND_PREV)
@@ -188,7 +188,7 @@ int main()
 			}
 			else
 			{
-				std::cout << word->content << " " << word->count << std::endl;
+				std::cout << word->key << " " << word->count << std::endl;
 			}
 		}
 		else if(current_command.name == COMMAND_LIST)

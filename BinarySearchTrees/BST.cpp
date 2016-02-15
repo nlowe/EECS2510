@@ -31,7 +31,7 @@ Word* BST::add(std::string word)
 		previous = candidate;
 
 		// Find which branch to take
-		branchComparisonResult = word.compare(candidate->Payload->content);
+		branchComparisonResult = word.compare(candidate->Payload->key);
 
 		if (branchComparisonResult < 0)
 		{
@@ -143,7 +143,7 @@ BinaryTreeNode* BST::find(std::string key) const
 	auto candidate = Root;
 	do
 	{
-		int branch = key.compare(candidate->Payload->content) < 0;
+		int branch = key.compare(candidate->Payload->key) < 0;
 
 		if (branch < 0)
 		{
@@ -309,6 +309,6 @@ void BST::inOrderPrint(BinaryTreeNode* node) const
 	if (node == nullptr) return;
 
 	inOrderPrint(node->Left);
-	std::cout << node->Payload->content << " " << node->Payload->count << std::endl;
+	std::cout << node->Payload->key << " " << node->Payload->count << std::endl;
 	inOrderPrint(node->Right);
 }

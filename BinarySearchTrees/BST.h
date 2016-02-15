@@ -1,5 +1,5 @@
 #pragma once
-#include "../CustomDataTypes/Word.h"
+#include "Word.h"
 #include <functional>
 
 // A structure for a node in a binary tree
