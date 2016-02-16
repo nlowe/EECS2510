@@ -1,11 +1,40 @@
+/*
+ * BST.h - interface for a Binary Search Tree
+ *
+ * Built for EECS2510 - Nonlinear Data Structures
+ *	at The University of Toledo, Spring 2016
+ *
+ * Copyright (c) 2016 Nathan Lowe
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
 #pragma once
 #include "Word.h"
+#include <string>
 
-// A structure for a node in a binary tree
+// A node in a Binary Tree
 struct BinaryTreeNode
 {
 	// The payload the node contains
 	Word* Payload;
+
 	// The immediate parent node
 	BinaryTreeNode* Parent = nullptr;
 	// The Left Child Node
@@ -13,9 +42,8 @@ struct BinaryTreeNode
 	// The Right Child Node
 	BinaryTreeNode* Right = nullptr;
 
-	explicit BinaryTreeNode(Word* payload) : Payload(payload)
-	{
-	}
+	// Construct a binary tree node with the specified Word as a payload
+	explicit BinaryTreeNode(Word* payload) : Payload(payload){}
 
 	~BinaryTreeNode()
 	{
@@ -23,22 +51,15 @@ struct BinaryTreeNode
 		if (Left != nullptr) delete Left;
 		if (Right != nullptr) delete Right;
 	}
-
-	// Join the specified node into this nodes left or right branch
-	void Graft(BinaryTreeNode* node, int branch)
-	{
-		if (branch < 0)
-		{
-			Left = node;
-		}
-		else
-		{
-			Right = node;
-		}
-	}
 };
 
-// A binary search tree containing words. The key for each node is the string representation of the word
+// A Tree that exhibits the Binary Search Tree Property :
+//
+// For any given node with a key of k:
+//		* All items on the leftBranch of the node are "less" than k
+//		* All items on the rightBranch of the node are "greater" than k
+//
+// Due to time constraints, the tree only accepts payloads of type Word and is not templated
 class BST
 {
 public:
