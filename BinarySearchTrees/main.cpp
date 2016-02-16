@@ -161,7 +161,7 @@ int main()
 			}
 			else
 			{
-				std::cout << word->key << " " << word->count << std::endl;
+				std::cout << word->key << std::endl;
 			}
 		}
 		else if(current_command.name == COMMAND_MAX)
@@ -174,7 +174,7 @@ int main()
 			}
 			else
 			{
-				std::cout << word->key << " " << word->count << std::endl;
+				std::cout << word->key << std::endl;
 			}
 		}
 		else if(current_command.name == COMMAND_NEXT)
