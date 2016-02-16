@@ -57,6 +57,8 @@ Word* BST::add(std::string word)
 
 	// Graft the new leaf node into the tree
 	previous->Graft(candidate, branchComparisonResult);
+	// And fix the parent pointer
+	candidate->Parent = previous;
 
 	return candidate->Payload;
 }
@@ -143,7 +145,7 @@ BinaryTreeNode* BST::find(std::string key) const
 	auto candidate = Root;
 	do
 	{
-		int branch = key.compare(candidate->Payload->key) < 0;
+		int branch = key.compare(candidate->Payload->key);
 
 		if (branch < 0)
 		{

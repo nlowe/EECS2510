@@ -1,6 +1,5 @@
 #pragma once
 #include "Word.h"
-#include <functional>
 
 // A structure for a node in a binary tree
 struct BinaryTreeNode
@@ -21,7 +20,6 @@ struct BinaryTreeNode
 	~BinaryTreeNode()
 	{
 		delete Payload;
-		if (Parent != nullptr) delete Parent;
 		if (Left != nullptr) delete Left;
 		if (Right != nullptr) delete Right;
 	}
