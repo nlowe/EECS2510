@@ -116,12 +116,12 @@ private:
 	// Write the subtree from the specified node to the specified output stream
 	static void WriteEncodingTree(std::ostream& output, HuffmanTreeNode* node);
 	// Read the subtree from the specified input stream
-	static HuffmanTreeNode* ReadEncodingTree(std::ifstream& reader);
+	static HuffmanTreeNode* ReadEncodingTree(std::ifstream& reader, size_t& bytesRead);
 
 	// Decodes the bit from ubyte masked by the specified mask, moving the specified node pointer along the tree
 	static void DecodeBit(HuffmanTreeNode*& currentNode, unsigned char ubyte, unsigned char mask);
 	// Checks the specified node pointer, and if it is a leaf, writes its payload to the specified output stream
-	void WriteIfLeaf(std::ofstream& writer, HuffmanTreeNode*& currentNode) const;
+	void WriteIfLeaf(std::ofstream& writer, HuffmanTreeNode*& currentNode, size_t& bytesWritten) const;
 
 	// Builds the internal encoding tree from an array of nodes
 	void BuildTreeFromNodes(HuffmanTreeNode* nodes[256]);

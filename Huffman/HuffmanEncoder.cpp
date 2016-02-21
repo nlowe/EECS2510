@@ -28,6 +28,7 @@
 #include "stdafx.h"
 #include "HuffmanEncoder.h"
 #include <fstream>
+#include <iostream>
 
 // Construct an Empty Huffman Encoder
 HuffmanEncoder::HuffmanEncoder() : IsDirty(true) {}
@@ -116,7 +117,8 @@ void HuffmanEncoder::Encode(std::string input, std::string output, size_t& bytes
 	if (!writer.is_open() || !writer.good()) throw std::runtime_error("Cannot open file for write");
 
 	// Write the header and file format version
-	writer.write(reinterpret_cast<const char*>(&HEADER), sizeof(HEADER));
+	writer.put((HEADER >> 8) & 0xFF);
+	writer.put(HEADER & 0xFF);
 	writer.put(VERSION);
 
 	//Write the decoding tree
@@ -134,23 +136,18 @@ void HuffmanEncoder::Encode(std::string input, std::string output, size_t& bytes
 		// And add its encoding representation to the output buffer
 		encodingBuffer += EncodingTable[reinterpret_cast<unsigned char&>(byte)];
 
-		if (encodingBuffer.length() >= 8)
+		while (encodingBuffer.length() >= 8)
 		{
 			// Its time to flush the buffer
-			auto writeCount = encodingBuffer.length() / 8;
+			bytesWritten++;
 
-			// Start writing bytes to the output file
-			for (auto i = 0; i < writeCount; i++)
-			{
-				bytesWritten++;
+			// Extract 8 bits from the buffer
+			auto slice = encodingBuffer.substr(0, 8);
+			encodingBuffer.erase(0, 8);
 
-				// Extract 8 bits from the buffer
-				auto slice = encodingBuffer.substr(0, 8);
-				encodingBuffer.erase(0, 8);
-
-				// And write the byte value to the file
-				writer.put(BitfieldToByte(slice));
-			}
+			// And write the byte value to the file
+			writer.put(BitfieldToByte(slice));
+			
 		}
 	}
 	reader.close();
@@ -172,17 +169,19 @@ void HuffmanEncoder::Encode(std::string input, std::string output, size_t& bytes
 }
 
 // Read the subtree from the specified input stream
-HuffmanTreeNode* HuffmanEncoder::ReadEncodingTree(std::ifstream& reader)
+HuffmanTreeNode* HuffmanEncoder::ReadEncodingTree(std::ifstream& reader, size_t& bytesRead)
 {
 	// Read the node type from the stream
 	char nodeType;
 	reader.get(nodeType);
+	bytesRead++;
 
 	// If this is a leaf node, read its payload 
 	if (nodeType == FLAG_LEAF_NODE)
 	{
 		char b;
 		reader.get(b);
+		bytesRead++;
 
 		return new HuffmanTreeNode(reinterpret_cast<unsigned char&>(b), 0);
 	}
@@ -193,8 +192,8 @@ HuffmanTreeNode* HuffmanEncoder::ReadEncodingTree(std::ifstream& reader)
 	
 	// Otherwise, read the left and right sub trees from the stream if their bitmask is set
 	auto result = new HuffmanTreeNode(0, 0);
-	if ((nodeType & FLAG_LEFT_CHILD) == FLAG_LEFT_CHILD)   result->Left  = ReadEncodingTree(reader);
-	if ((nodeType & FLAG_RIGHT_CHILD) == FLAG_RIGHT_CHILD) result->Right = ReadEncodingTree(reader);
+	if ((nodeType & FLAG_LEFT_CHILD) == FLAG_LEFT_CHILD)   result->Left  = ReadEncodingTree(reader, bytesRead);
+	if ((nodeType & FLAG_RIGHT_CHILD) == FLAG_RIGHT_CHILD) result->Right = ReadEncodingTree(reader, bytesRead);
 
 	return result;
 }
@@ -220,12 +219,13 @@ void HuffmanEncoder::DecodeBit(HuffmanTreeNode*& currentNode, unsigned char ubyt
 }
 
 // Checks the specified node pointer, and if it is a leaf, writes its payload to the specified output stream
-void HuffmanEncoder::WriteIfLeaf(std::ofstream& writer, HuffmanTreeNode*& currentNode) const
+void HuffmanEncoder::WriteIfLeaf(std::ofstream& writer, HuffmanTreeNode*& currentNode, size_t& bytesWritten) const
 {
 	if(currentNode->IsLeaf())
 	{
 		// We're at a leaf. Write a new byte
 		writer.put(currentNode->payload);
+		bytesWritten++;
 
 		// Reset the currentNode pointer to the root of the tree
 		currentNode = TreeRoot;
@@ -247,13 +247,22 @@ void HuffmanEncoder::Decode(std::string input, std::string output, size_t& bytes
 	if (!writer.is_open()) throw std::runtime_error("Cannot open file for write");
 
 	// Read the file header and version
-	short header;
+	short header = 0;
 	char version;
 
-	reader.get(reinterpret_cast<char*>(&header), sizeof(header));
+	char h1;
+	char h2;
+	reader.get(h1);
+	reader.get(h2);
+
+	header |= h1 << 8;
+	header |= h2;
+
 	reader.get(version);
 
-	if (header != 0x687a)
+	bytesRead += 3;
+
+	if (reinterpret_cast<unsigned short&>(header) != 0x687a)
 	{
 		reader.close();
 		writer.close();
@@ -277,7 +286,7 @@ void HuffmanEncoder::Decode(std::string input, std::string output, size_t& bytes
 	}
 
 	// Read the decoding tree
-	TreeRoot = ReadEncodingTree(reader);
+	TreeRoot = ReadEncodingTree(reader, bytesRead);
 
 	auto currentNode = TreeRoot;
 
@@ -287,6 +296,7 @@ void HuffmanEncoder::Decode(std::string input, std::string output, size_t& bytes
 		// Read the next byte of the file
 		char byte;
 		reader.get(byte);
+		bytesRead++;
 
 		// Parse the read byte as unsigned
 		auto ubyte = reinterpret_cast<unsigned char&>(byte);
@@ -296,28 +306,28 @@ void HuffmanEncoder::Decode(std::string input, std::string output, size_t& bytes
 		// If we are, write the payload byte to the output file
 		// And reset the node pointer to the root of the tree
 
-		WriteIfLeaf(writer, currentNode);
+		WriteIfLeaf(writer, currentNode, bytesWritten);
 		DecodeBit(currentNode, ubyte, 1 << 7);
 
-		WriteIfLeaf(writer, currentNode);
+		WriteIfLeaf(writer, currentNode, bytesWritten);
 		DecodeBit(currentNode, ubyte, 1 << 6);
 
-		WriteIfLeaf(writer, currentNode);
+		WriteIfLeaf(writer, currentNode, bytesWritten);
 		DecodeBit(currentNode, ubyte, 1 << 5);
 
-		WriteIfLeaf(writer, currentNode);
+		WriteIfLeaf(writer, currentNode, bytesWritten);
 		DecodeBit(currentNode, ubyte, 1 << 4);
 
-		WriteIfLeaf(writer, currentNode);
+		WriteIfLeaf(writer, currentNode, bytesWritten);
 		DecodeBit(currentNode, ubyte, 1 << 3);
 
-		WriteIfLeaf(writer, currentNode);
+		WriteIfLeaf(writer, currentNode, bytesWritten);
 		DecodeBit(currentNode, ubyte, 1 << 2);
 
-		WriteIfLeaf(writer, currentNode);
+		WriteIfLeaf(writer, currentNode, bytesWritten);
 		DecodeBit(currentNode, ubyte, 1 << 1);
 
-		WriteIfLeaf(writer, currentNode);
+		WriteIfLeaf(writer, currentNode, bytesWritten);
 		DecodeBit(currentNode, ubyte, 1 << 0);
 	}
 
@@ -410,10 +420,12 @@ void HuffmanEncoder::BuildTreeFromNodes(HuffmanTreeNode* nodes[256])
 			temp->Left = nodes[firstSmallest];
 			temp->Right = nodes[secondSmallest];
 
+			std::cout << "Merging nodes at " << firstSmallest << " and " << secondSmallest << " into " << firstSmallest << std::endl;
+
 			nodes[firstSmallest] = temp;
 			nodes[secondSmallest] = nullptr;
 			
-			secondSmallest = -1;
+			firstSmallest = secondSmallest = -1;
 		}
 		else
 		{
@@ -445,9 +457,9 @@ void HuffmanEncoder::BuildEncodingTable(std::string bitstring, HuffmanTreeNode* 
 	else
 	{
 		// Go find another leaf, 0 for left
-		BuildEncodingTable("0" + bitstring, node->Left);
+		BuildEncodingTable(bitstring + "0", node->Left);
 		// and 1 for right
-		BuildEncodingTable("1" + bitstring, node->Right);
+		BuildEncodingTable(bitstring + "1", node->Right);
 	}
 }
 

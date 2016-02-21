@@ -74,6 +74,17 @@ struct CommandLineOptions
 	}
 };
 
+string PrependExtension(string input, string extension)
+{
+	auto period = input.find_last_of('.');
+	if(period != string::npos)
+	{
+		return input.substr(0, period) + '.' + extension + input.substr(period);
+	}
+	
+	throw std::invalid_argument("Unable to find extension in " + input);
+}
+
 inline void verbose(CommandLineOptions opts, string msg)
 {
 	if (opts.verbose) cout << msg << endl;
@@ -195,7 +206,7 @@ int main(int argc, char* argv[])
 		{
 			encoder->Encode(options.input, options.output, read, written);
 
-			double ratio = written / read;
+			auto ratio = static_cast<double>(written) / static_cast<double>(read);
 
 			cout << "File encoded. In: " << read << " bytes, Out: " << written << " bytes. Ratio: " << ratio << endl;
 		}
@@ -209,26 +220,39 @@ int main(int argc, char* argv[])
 
 	if (options.decode)
 	{
+		string inFile = options.input;
 		string outFile = options.output;
 			
-		if(!options.encode) encoder = new HuffmanEncoder();
-		else outFile = "IN_PLACE_" + options.input;
+		if (!options.encode)
+		{
+			encoder = new HuffmanEncoder();
+		}
+		else
+		{
+			inFile = options.output;
+			outFile = PrependExtension(options.input, "hz");
+		}
 
 		size_t read = 0;
 		size_t written = 0;
 
 		try
 		{
-			encoder->Decode(options.input, outFile, read, written);
+			encoder->Decode(inFile, outFile, read, written);
 
 			cout << "File decoded. In: " << read << " bytes, Out: " << written << " bytes" << endl;
 		}
 		catch (exception& e)
 		{
-			cerr << "An error occurred while encoding: " << e.what() << endl;
+			cerr << "An error occurred while decoding: " << e.what() << endl;
 
 			return EXIT_ENCODE_FAILED;
 		}
+	}
+
+	if (encoder != nullptr)
+	{
+		delete encoder;
 	}
 
     return EXIT_OK;
