@@ -29,11 +29,16 @@
  */
 #include "stdafx.h"
 #include <iostream>
+#include "HuffmanEncoder.h"
 
 using namespace std;
 
+HuffmanEncoder* encoder = nullptr;
+
 static const int EXIT_OK = 0;
 static const int EXIT_BAD_ARGUMENTS = -1;
+static const int EXIT_ENCODE_FAILED = -2;
+static const int EXIT_DECODE_FAILED = -3;
 
 struct CommandLineOptions
 {
@@ -44,7 +49,35 @@ struct CommandLineOptions
 	bool verbose = false;
 	string input = "";
 	string output = "";
+
+	string ToString() const
+	{
+		string result = "Parse Error: ";
+		result += parseError ? "true\n" : "false\n";
+		
+		result += "Print Help: ";
+		result += printHelp ? "true\n" : "false\n";
+
+		result += "Encode: ";
+		result += encode ? "true\n" : "false\n";
+
+		result += "Decode: ";
+		result += decode ? "true\n" : "false\n";
+
+		result += "Verbose: ";
+		result += verbose ? "true\n" : "false\n";
+
+		result += "Input File: " + input + "\n";
+		result += "Output File: " + output += "\n";
+
+		return result;
+	}
 };
+
+inline void verbose(CommandLineOptions opts, string msg)
+{
+	if (opts.verbose) cout << msg << endl;
+}
 
 void printHelp()
 {
@@ -126,6 +159,8 @@ int main(int argc, char* argv[])
 {
 	auto options = parseArguments(argc, argv);
 	
+	verbose(options, options.ToString());
+
 	if(options.printHelp)
 	{
 		printHelp();
@@ -147,6 +182,53 @@ int main(int argc, char* argv[])
 	{
 		cout << "Both the input and output files must be specified" << endl;
 		return EXIT_BAD_ARGUMENTS;
+	}
+
+	if (options.encode)
+	{
+		encoder = HuffmanEncoder::ForFile(options.input);
+		
+		size_t read = 0;
+		size_t written = 0;
+
+		try
+		{
+			encoder->Encode(options.input, options.output, read, written);
+
+			double ratio = written / read;
+
+			cout << "File encoded. In: " << read << " bytes, Out: " << written << " bytes. Ratio: " << ratio << endl;
+		}
+		catch(exception& e)
+		{
+			cerr << "An error occurred while encoding: " << e.what() << endl;
+
+			return EXIT_ENCODE_FAILED;
+		}
+	}
+
+	if (options.decode)
+	{
+		string outFile = options.output;
+			
+		if(!options.encode) encoder = new HuffmanEncoder();
+		else outFile = "IN_PLACE_" + options.input;
+
+		size_t read = 0;
+		size_t written = 0;
+
+		try
+		{
+			encoder->Decode(options.input, outFile, read, written);
+
+			cout << "File decoded. In: " << read << " bytes, Out: " << written << " bytes" << endl;
+		}
+		catch (exception& e)
+		{
+			cerr << "An error occurred while encoding: " << e.what() << endl;
+
+			return EXIT_ENCODE_FAILED;
+		}
 	}
 
     return EXIT_OK;
