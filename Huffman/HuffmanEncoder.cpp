@@ -51,6 +51,8 @@ HuffmanEncoder::HuffmanEncoder(unsigned long long weights[256])
 	// Now, build the bitstring table
 	// This assignment requires us to use std::strings and not bitsets
 	BuildEncodingTable("", TreeRoot);
+
+	std::cout << "Padding Hint: " << PaddingHint << "(" << static_cast<char>(PaddingChar) << ")" << std::endl;
 }
 
 HuffmanEncoder::~HuffmanEncoder()
@@ -120,18 +122,18 @@ void HuffmanEncoder::Encode(std::string input, std::string output, size_t& bytes
 	writer.put((HEADER >> 8) & 0xFF);
 	writer.put(HEADER & 0xFF);
 	writer.put(VERSION);
+	bytesWritten += 3;
 
 	//Write the decoding tree
-	WriteEncodingTree(writer, TreeRoot);
+	WriteEncodingTree(writer, TreeRoot, bytesWritten);
 
 	std::string encodingBuffer = "";
-	while(!reader.eof())
+
+	// Read the file one byte at a time
+	char byte;
+	while(reader.get(byte))
 	{
 		bytesRead++;
-
-		// Read a byte from the input file
-		char byte;
-		reader.get(byte);
 
 		// And add its encoding representation to the output buffer
 		encodingBuffer += EncodingTable[reinterpret_cast<unsigned char&>(byte)];
@@ -147,9 +149,11 @@ void HuffmanEncoder::Encode(std::string input, std::string output, size_t& bytes
 
 			// And write the byte value to the file
 			writer.put(BitfieldToByte(slice));
-			
 		}
 	}
+
+	// Now that a read failed, we should be at the end of the file
+	if (!reader.eof()) throw std::invalid_argument("Falied to read file completely");
 	reader.close();
 
 	// Check to see if we have a partial byte to write
@@ -157,14 +161,17 @@ void HuffmanEncoder::Encode(std::string input, std::string output, size_t& bytes
 	{
 		bytesWritten++;
 
+		std::cout << "Encoded output not byte-aligned. Need " << 8 - encodingBuffer.length() << " more bits (Buffer contains: ";
+		std::cout << encodingBuffer << ")" << std::endl;
+
 		// Pad the buffer in case we're not aligned to a byte
 		// By padding with the longest bitstring, we ensure we will never reach a leaf node when decoding the final byte
-		encodingBuffer += PaddingHint;
-		encodingBuffer = encodingBuffer.substr(0, 8);
+		encodingBuffer += PaddingHint.substr(0, 8 - encodingBuffer.size());
 
 		writer.put(BitfieldToByte(encodingBuffer));
 	}
 
+	writer.flush();
 	writer.close();
 }
 
@@ -290,12 +297,11 @@ void HuffmanEncoder::Decode(std::string input, std::string output, size_t& bytes
 
 	auto currentNode = TreeRoot;
 
-	// Decode the file
-	while(!reader.eof())
+	// Decode the file one byte at a time
+	char byte;
+	while(reader.get(byte))
 	{
 		// Read the next byte of the file
-		char byte;
-		reader.get(byte);
 		bytesRead++;
 
 		// Parse the read byte as unsigned
@@ -305,39 +311,27 @@ void HuffmanEncoder::Decode(std::string input, std::string output, size_t& bytes
 		// At each bit, check to see if we're at a leaf node
 		// If we are, write the payload byte to the output file
 		// And reset the node pointer to the root of the tree
-
-		WriteIfLeaf(writer, currentNode, bytesWritten);
-		DecodeBit(currentNode, ubyte, 1 << 7);
-
-		WriteIfLeaf(writer, currentNode, bytesWritten);
-		DecodeBit(currentNode, ubyte, 1 << 6);
-
-		WriteIfLeaf(writer, currentNode, bytesWritten);
-		DecodeBit(currentNode, ubyte, 1 << 5);
-
-		WriteIfLeaf(writer, currentNode, bytesWritten);
-		DecodeBit(currentNode, ubyte, 1 << 4);
-
-		WriteIfLeaf(writer, currentNode, bytesWritten);
-		DecodeBit(currentNode, ubyte, 1 << 3);
-
-		WriteIfLeaf(writer, currentNode, bytesWritten);
-		DecodeBit(currentNode, ubyte, 1 << 2);
-
-		WriteIfLeaf(writer, currentNode, bytesWritten);
-		DecodeBit(currentNode, ubyte, 1 << 1);
-
-		WriteIfLeaf(writer, currentNode, bytesWritten);
-		DecodeBit(currentNode, ubyte, 1 << 0);
+		for (auto i = 7; i >= 0; i--)
+		{
+			WriteIfLeaf(writer, currentNode, bytesWritten);
+			DecodeBit(currentNode, ubyte, 1 << i);
+		}
 	}
 
-	// Close the streams
+	// Now that a read failed, we should be at the end of the file
+	if (!reader.eof()) throw std::invalid_argument("Falied to read file completely");
 	reader.close();
+
+	// Check if we're evenly alligned. If not, we won't be at a leaf node anyways
+	WriteIfLeaf(writer, currentNode, bytesWritten);
+
+	// Close the streams
+	writer.flush();
 	writer.close();
 }
 
 // Write the subtree from the specified node to the specified output stream
-void HuffmanEncoder::WriteEncodingTree(std::ostream& output, HuffmanTreeNode* node)
+void HuffmanEncoder::WriteEncodingTree(std::ostream& output, HuffmanTreeNode* node, size_t& bytesWritten)
 {
 	if (node == nullptr) return;
 
@@ -349,6 +343,8 @@ void HuffmanEncoder::WriteEncodingTree(std::ostream& output, HuffmanTreeNode* no
 	{
 		output.put(nodeType);
 		output.put(node->payload);
+
+		bytesWritten += 2;
 		return;
 	}
 
@@ -358,10 +354,11 @@ void HuffmanEncoder::WriteEncodingTree(std::ostream& output, HuffmanTreeNode* no
 
 	// Write the node type
 	output.put(nodeType);
+	bytesWritten++;
 
 	// And then write the left and right subtrees
-	WriteEncodingTree(output, node->Left);
-	WriteEncodingTree(output, node->Right);
+	WriteEncodingTree(output, node->Left, bytesWritten);
+	WriteEncodingTree(output, node->Right, bytesWritten);
 }
 
 // Builds the internal encoding tree from an array of nodes
@@ -443,15 +440,18 @@ void HuffmanEncoder::BuildEncodingTable(std::string bitstring, HuffmanTreeNode* 
 {
 	if (node == nullptr) return;
 
-	if (node->Left == nullptr && node->Right == nullptr)
+	if (node->IsLeaf())
 	{
 		// We found a leaf node, record the bitstring that got us here
 		EncodingTable[node->payload] = bitstring;
 
 		// Remember the largest bitstring for easy padding of non-aligned bytes when encoding
-		if(bitstring.length() > PaddingHint.length())
+		if(bitstring.length() >= 8 && bitstring.length() > PaddingHint.length())
 		{
 			PaddingHint = bitstring;
+			PaddingChar = node->payload;
+
+			std::cout << "Electing new padding hint " << static_cast<char>(PaddingChar) << "(" << bitstring << ")" << std::endl;
 		}
 	}
 	else

@@ -104,17 +104,19 @@ public:
 	//
 	// If this is undesired, a new Encoder must be constructed
 	void Decode(std::string input, std::string output, size_t& bytesRead, size_t& bytesWritten);
+
+	// A table of bitstrings used for encoding
+	std::string EncodingTable[256] = {};
 private:
 	// The root of the encoding tree
 	HuffmanTreeNode* TreeRoot = nullptr;
 
-	// A table of bitstrings used for encoding
-	std::string EncodingTable[256] = {};
 	// The longest bitstring, used for padding to the nearest byte when encoding the last byte of a file
 	std::string PaddingHint = "";
+	unsigned char PaddingChar = 0;
 
 	// Write the subtree from the specified node to the specified output stream
-	static void WriteEncodingTree(std::ostream& output, HuffmanTreeNode* node);
+	static void WriteEncodingTree(std::ostream& output, HuffmanTreeNode* node, size_t& bytesWritten);
 	// Read the subtree from the specified input stream
 	static HuffmanTreeNode* ReadEncodingTree(std::ifstream& reader, size_t& bytesRead);
 

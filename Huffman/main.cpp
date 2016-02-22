@@ -30,6 +30,7 @@
 #include "stdafx.h"
 #include <iostream>
 #include "HuffmanEncoder.h"
+#include <chrono>
 
 using namespace std;
 
@@ -197,18 +198,23 @@ int main(int argc, char* argv[])
 
 	if (options.encode)
 	{
+		auto ctor_start = chrono::system_clock::now();
 		encoder = HuffmanEncoder::ForFile(options.input);
-		
+		auto ctor_end = chrono::system_clock::now();
+
 		size_t read = 0;
 		size_t written = 0;
 
 		try
 		{
+			auto encode_start = chrono::system_clock::now();
 			encoder->Encode(options.input, options.output, read, written);
+			auto encode_end = chrono::system_clock::now();
 
 			auto ratio = static_cast<double>(written) / static_cast<double>(read);
 
-			cout << "File encoded. In: " << read << " bytes, Out: " << written << " bytes. Ratio: " << ratio << endl;
+			cout << "File encoded. In: " << read << " bytes, Out: " << written << " bytes. Ratio: " << ratio;
+			cout << " Time: " << (ctor_end - ctor_start).count() << "ms initialization, " << (encode_end - encode_start).count() << "ms encode" << endl;
 		}
 		catch(exception& e)
 		{
@@ -238,9 +244,12 @@ int main(int argc, char* argv[])
 
 		try
 		{
+			auto start = chrono::system_clock::now();
 			encoder->Decode(inFile, outFile, read, written);
+			auto end = chrono::system_clock::now();
 
-			cout << "File decoded. In: " << read << " bytes, Out: " << written << " bytes" << endl;
+			cout << "File decoded. In: " << read << " bytes, Out: " << written << " bytes, ";
+			cout << (end - start).count() << "ms" << endl;
 		}
 		catch (exception& e)
 		{
