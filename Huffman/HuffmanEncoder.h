@@ -105,11 +105,12 @@ public:
 	// If this is undesired, a new Encoder must be constructed
 	void Decode(std::string input, std::string output, size_t& bytesRead, size_t& bytesWritten);
 
-	// A table of bitstrings used for encoding
-	std::string EncodingTable[256] = {};
 private:
 	// The root of the encoding tree
 	HuffmanTreeNode* TreeRoot = nullptr;
+
+	// A table of bitstrings used for encoding
+	std::string EncodingTable[256] = {};
 
 	// The longest bitstring, used for padding to the nearest byte when encoding the last byte of a file
 	std::string PaddingHint = "";

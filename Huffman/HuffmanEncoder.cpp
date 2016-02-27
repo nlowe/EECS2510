@@ -29,6 +29,7 @@
 #include "HuffmanEncoder.h"
 #include <fstream>
 #include <iostream>
+#include "Verbose.h"
 
 // Construct an Empty Huffman Encoder
 HuffmanEncoder::HuffmanEncoder() : IsDirty(true) {}
@@ -50,9 +51,10 @@ HuffmanEncoder::HuffmanEncoder(unsigned long long weights[256])
 
 	// Now, build the bitstring table
 	// This assignment requires us to use std::strings and not bitsets
+	verbose::write("Building Encoding Table...");
 	BuildEncodingTable("", TreeRoot);
 
-	std::cout << "Padding Hint: " << PaddingHint << "(" << static_cast<char>(PaddingChar) << ")" << std::endl;
+	verbose::write("Padding Hint: " + std::to_string(PaddingChar) + " (" + PaddingHint + ")");
 }
 
 HuffmanEncoder::~HuffmanEncoder()
@@ -93,7 +95,7 @@ HuffmanEncoder* HuffmanEncoder::ForFile(std::string path)
 // File Format (Version 2):
 //		2 Bytes - 0x687A - 'hz' Magic Header to distinguish file format
 //		1 Byte  - 0x02   - File format version number
-//		Decoding Tree - Variable, dependent on the number of internal nodes
+//		Decoding Tree - Variable, dependent on the number of internal nodes, up to 1022 bytes
 //			The decoding tree is written as a pre-order traversal of the tree such that:
 //				1 Byte  - 0x01 If the node being visited is an internal node or root with only a left child
 //				1 Byte  - 0x02 If the node being visited is an internal node or root with only a right child
@@ -117,6 +119,8 @@ void HuffmanEncoder::Encode(std::string input, std::string output, size_t& bytes
 
 	if (!reader.is_open() || !reader.good()) throw std::runtime_error("Cannot open file for read");
 	if (!writer.is_open() || !writer.good()) throw std::runtime_error("Cannot open file for write");
+
+	verbose::write("Starting encode of " + input);
 
 	// Write the header and file format version
 	writer.put((HEADER >> 8) & 0xFF);
@@ -161,8 +165,10 @@ void HuffmanEncoder::Encode(std::string input, std::string output, size_t& bytes
 	{
 		bytesWritten++;
 
-		std::cout << "Encoded output not byte-aligned. Need " << 8 - encodingBuffer.length() << " more bits (Buffer contains: ";
-		std::cout << encodingBuffer << ")" << std::endl;
+		verbose::write(
+			"Encoded output not byte-aligned. Need " + std::to_string(8 - encodingBuffer.length()) +
+			" more bits (Buffer contains: " + encodingBuffer + ")"
+		);
 
 		// Pad the buffer in case we're not aligned to a byte
 		// By padding with the longest bitstring, we ensure we will never reach a leaf node when decoding the final byte
@@ -253,6 +259,8 @@ void HuffmanEncoder::Decode(std::string input, std::string output, size_t& bytes
 	if (!reader.is_open()) throw std::runtime_error("Cannot open file for read");
 	if (!writer.is_open()) throw std::runtime_error("Cannot open file for write");
 
+	verbose::write("Starting decoding of " + input);
+
 	// Read the file header and version
 	short header = 0;
 	char version;
@@ -288,6 +296,9 @@ void HuffmanEncoder::Decode(std::string input, std::string output, size_t& bytes
 	// We may have recycled an existing encoder. Get rid of its encoding tree
 	if (TreeRoot != nullptr)
 	{
+		verbose::write("WARNING: An encoding tree already exists and will be overwritten");
+		verbose::write("WARNING: This can be ignored if this encoder is only being used to decode a file");
+		verbose::write("WARNING: Construct a new encoder if you intend to encode another file");
 		delete TreeRoot;
 		IsDirty = true;
 	}
@@ -364,6 +375,8 @@ void HuffmanEncoder::WriteEncodingTree(std::ostream& output, HuffmanTreeNode* no
 // Builds the internal encoding tree from an array of nodes
 void HuffmanEncoder::BuildTreeFromNodes(HuffmanTreeNode* nodes[256])
 {
+	verbose::write("Building Encoding Tree...");
+
 	int firstSmallest = -1;
 	int secondSmallest = -1;
 
@@ -417,7 +430,7 @@ void HuffmanEncoder::BuildTreeFromNodes(HuffmanTreeNode* nodes[256])
 			temp->Left = nodes[firstSmallest];
 			temp->Right = nodes[secondSmallest];
 
-			std::cout << "Merging nodes at " << firstSmallest << " and " << secondSmallest << " into " << firstSmallest << std::endl;
+			verbose::write("\tMerging nodes at " + std::to_string(firstSmallest) + " and " + std::to_string(secondSmallest) + " into " + std::to_string(firstSmallest));
 
 			nodes[firstSmallest] = temp;
 			nodes[secondSmallest] = nullptr;
@@ -451,7 +464,7 @@ void HuffmanEncoder::BuildEncodingTable(std::string bitstring, HuffmanTreeNode* 
 			PaddingHint = bitstring;
 			PaddingChar = node->payload;
 
-			std::cout << "Electing new padding hint " << static_cast<char>(PaddingChar) << "(" << bitstring << ")" << std::endl;
+			verbose::write("\tElecting new padding hint " + std::to_string(PaddingChar) + " (" + bitstring + ")");
 		}
 	}
 	else
