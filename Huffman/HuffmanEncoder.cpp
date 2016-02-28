@@ -26,9 +26,9 @@
  */
 
 #include "stdafx.h"
-#include "HuffmanEncoder.h"
 #include <fstream>
-#include <iostream>
+
+#include "HuffmanEncoder.h"
 #include "Verbose.h"
 
 // Construct an Empty Huffman Encoder
@@ -43,7 +43,10 @@ HuffmanEncoder::HuffmanEncoder(unsigned long long weights[256])
 	// Initialize the nodes with weights
 	for (auto b = 0; b < 256; b++)
 	{
-		if(weights[b] > 0) nodes[b] = new HuffmanTreeNode(b, weights[b]);
+		// A potential optimization could be made here that does not include unused bytes
+		// However, this means that small files might not encode/decode successfully since
+		// a sufficiently long enough bitstring would not exist
+		nodes[b] = new HuffmanTreeNode(b, weights[b]);
 	}
 
 	// Build the tree from the weights
@@ -54,7 +57,7 @@ HuffmanEncoder::HuffmanEncoder(unsigned long long weights[256])
 	verbose::write("Building Encoding Table...");
 	BuildEncodingTable("", TreeRoot);
 
-	verbose::write("Padding Hint: " + std::to_string(PaddingChar) + " (" + PaddingHint + ")");
+	verbose::write("Padding Hint: " + PaddingHint);
 }
 
 HuffmanEncoder::~HuffmanEncoder()
@@ -67,7 +70,7 @@ HuffmanEncoder::~HuffmanEncoder()
 //
 // The file is read byte by byte, and the number of times each byte occurrs is recorded
 // A Huffman Encoder is then constructed from the weight table
-HuffmanEncoder* HuffmanEncoder::ForFile(std::string path)
+HuffmanEncoder* HuffmanEncoder::InitializeFromFile(std::string path)
 {
 	std::ifstream reader;
 	reader.open(path, std::ios::binary);
@@ -82,6 +85,7 @@ HuffmanEncoder* HuffmanEncoder::ForFile(std::string path)
 		char byte;
 		reader.get(byte);
 
+		// Reinterpret the byte read as unsigned and increment the weight table element at its offset by one
 		weight[reinterpret_cast<unsigned char&>(byte)]++;
 	}
 	reader.close();
@@ -102,8 +106,9 @@ HuffmanEncoder* HuffmanEncoder::ForFile(std::string path)
 //				1 Byte	- 0x03 If the node being visited is an internal node or root with two children
 //				2 Bytes - 0x00 and the payload character If the node being visited is a leaf node
 //		Encoded Data
-//			Variable - The raw bitstrings converted to binary. The last bitstring is padded with the beginning of the longest bitstring
-void HuffmanEncoder::Encode(std::string input, std::string output, size_t& bytesRead, size_t& bytesWritten)
+//			Variable - The raw bitstrings converted to binary. The last bitstring is padded with the beginning of the
+//						longest bitstring
+void HuffmanEncoder::EncodeFile(std::string input, std::string output, size_t& bytesRead, size_t& bytesWritten)
 {
 	// Somehow, we have an encoder that wasn't properly initialized
 	if (TreeRoot == nullptr) throw std::runtime_error("Encoder not initialized");
@@ -115,10 +120,14 @@ void HuffmanEncoder::Encode(std::string input, std::string output, size_t& bytes
 	std::ofstream writer;
 
 	reader.open(input, std::ios::binary);
-	writer.open(output, std::ios::binary);
-
 	if (!reader.is_open() || !reader.good()) throw std::runtime_error("Cannot open file for read");
-	if (!writer.is_open() || !writer.good()) throw std::runtime_error("Cannot open file for write");
+	
+	writer.open(output, std::ios::binary);
+	if (!writer.is_open() || !writer.good())
+	{
+		reader.close();
+		throw std::runtime_error("Cannot open file for write");
+	}
 
 	verbose::write("Starting encode of " + input);
 
@@ -128,7 +137,8 @@ void HuffmanEncoder::Encode(std::string input, std::string output, size_t& bytes
 	writer.put(VERSION);
 	bytesWritten += 3;
 
-	//Write the decoding tree
+	// Write the decoding tree
+	// This allows encoded files to be decoded without needing the original file
 	WriteEncodingTree(writer, TreeRoot, bytesWritten);
 
 	std::string encodingBuffer = "";
@@ -155,10 +165,14 @@ void HuffmanEncoder::Encode(std::string input, std::string output, size_t& bytes
 			writer.put(BitfieldToByte(slice));
 		}
 	}
+	reader.close();
 
 	// Now that a read failed, we should be at the end of the file
-	if (!reader.eof()) throw std::invalid_argument("Falied to read file completely");
-	reader.close();
+	if (!reader.eof())
+	{
+		writer.close();
+		throw std::runtime_error("Falied to read file completely");
+	}
 
 	// Check to see if we have a partial byte to write
 	if(encodingBuffer.length() > 0)
@@ -222,12 +236,12 @@ void HuffmanEncoder::DecodeBit(HuffmanTreeNode*& currentNode, unsigned char ubyt
 	if((ubyte & mask) == mask)
 	{
 		if(currentNode->Right != nullptr) currentNode = currentNode->Right;
-		else throw std::invalid_argument("Input file is corrupt (expected right treepath does not exist)");
+		else throw std::runtime_error("Input file is corrupt (expected right treepath does not exist)");
 	}
 	else
 	{
 		if (currentNode->Left != nullptr) currentNode = currentNode->Left;
-		else throw std::invalid_argument("Input file is corrupt (expected left treepath does not exist)");
+		else throw std::runtime_error("Input file is corrupt (expected left treepath does not exist)");
 	}
 }
 
@@ -247,17 +261,21 @@ void HuffmanEncoder::WriteIfLeaf(std::ofstream& writer, HuffmanTreeNode*& curren
 
 // Decodes the input file to the specified output file
 //
-// See Encode(...) for documentation on the file format
-void HuffmanEncoder::Decode(std::string input, std::string output, size_t& bytesRead, size_t& bytesWritten)
+// See EncodeFile(...) for documentation on the file format
+void HuffmanEncoder::DecodeFile(std::string input, std::string output, size_t& bytesRead, size_t& bytesWritten)
 {
 	std::ifstream reader;
 	std::ofstream writer;
 
 	reader.open(input, std::ios::binary);
-	writer.open(output, std::ios::binary);
+	if (!reader.is_open() || !reader.good()) throw std::runtime_error("Cannot open file for read");
 
-	if (!reader.is_open()) throw std::runtime_error("Cannot open file for read");
-	if (!writer.is_open()) throw std::runtime_error("Cannot open file for write");
+	writer.open(output, std::ios::binary);
+	if (!writer.is_open() || !writer.good())
+	{
+		reader.close();
+		throw std::runtime_error("Cannot open file for write");
+	}
 
 	verbose::write("Starting decoding of " + input);
 
@@ -277,6 +295,7 @@ void HuffmanEncoder::Decode(std::string input, std::string output, size_t& bytes
 
 	bytesRead += 3;
 
+	// Make sure we're decoding a file made by this program
 	if (reinterpret_cast<unsigned short&>(header) != 0x687a)
 	{
 		reader.close();
@@ -285,6 +304,7 @@ void HuffmanEncoder::Decode(std::string input, std::string output, size_t& bytes
 		throw std::invalid_argument("Not a huffman file");
 	}
 
+	// Make sure we know how to decode this specific version
 	if (version != VERSION)
 	{
 		reader.close();
@@ -304,7 +324,19 @@ void HuffmanEncoder::Decode(std::string input, std::string output, size_t& bytes
 	}
 
 	// Read the decoding tree
-	TreeRoot = ReadEncodingTree(reader, bytesRead);
+	try
+	{
+		TreeRoot = ReadEncodingTree(reader, bytesRead);
+	}
+	catch(std::invalid_argument e)
+	{
+		// Close the streams
+		reader.close();
+		writer.close();
+
+		// And re-throw the exception
+		throw;
+	}
 
 	auto currentNode = TreeRoot;
 
@@ -325,7 +357,19 @@ void HuffmanEncoder::Decode(std::string input, std::string output, size_t& bytes
 		for (auto i = 7; i >= 0; i--)
 		{
 			WriteIfLeaf(writer, currentNode, bytesWritten);
-			DecodeBit(currentNode, ubyte, 1 << i);
+			try
+			{
+				DecodeBit(currentNode, ubyte, 1 << i);
+			}
+			catch(std::runtime_error e)
+			{
+				// Close the streams
+				reader.close();
+				writer.close();
+
+				// And re-throw the exception
+				throw;
+			}
 		}
 	}
 
@@ -462,9 +506,7 @@ void HuffmanEncoder::BuildEncodingTable(std::string bitstring, HuffmanTreeNode* 
 		if(bitstring.length() >= 8 && bitstring.length() > PaddingHint.length())
 		{
 			PaddingHint = bitstring;
-			PaddingChar = node->payload;
-
-			verbose::write("\tElecting new padding hint " + std::to_string(PaddingChar) + " (" + bitstring + ")");
+			verbose::write("\tElecting new padding hint " + bitstring);
 		}
 	}
 	else

@@ -26,7 +26,6 @@
  */
 
 #pragma once
-#include <string>
 
 // The next node in the stream is a leaf node
 static const unsigned char FLAG_LEAF_NODE   = 0x00;
@@ -50,6 +49,7 @@ struct HuffmanTreeNode
 	// The right child
 	HuffmanTreeNode* Right = nullptr;
 
+	// Construct a tree node from the specified character and weight
 	explicit HuffmanTreeNode(unsigned char p, unsigned long long w) : payload(p), weight(w) {}
 	~HuffmanTreeNode()
 	{
@@ -86,16 +86,18 @@ public:
 	// The file format version that this copy of the program will support
 	static const unsigned short VERSION = 0x02;
 
+	// Construct an empty Huffman Encoder
 	explicit HuffmanEncoder();
+	// Construct a Huffman Encoder from the provided weight table
 	explicit HuffmanEncoder(unsigned long long weights[256]);
 	~HuffmanEncoder();
 
 	// Construct a huffman encoder, populating the weights table from the bytes at the
 	// specified file path
-	static HuffmanEncoder* ForFile(std::string path);
+	static HuffmanEncoder* InitializeFromFile(std::string path);
 
 	// Encodes the file at <input> with the pre-generated encoding table and writes to <output>
-	void Encode(std::string input, std::string output, size_t& bytesRead, size_t& bytesWritten);
+	void EncodeFile(std::string input, std::string output, size_t& bytesRead, size_t& bytesWritten);
 
 	// Decodes the input file to the specified output file
 	//
@@ -103,7 +105,7 @@ public:
 	// Any subsequent encodings with this Encoder will use this new tree for encoding.
 	//
 	// If this is undesired, a new Encoder must be constructed
-	void Decode(std::string input, std::string output, size_t& bytesRead, size_t& bytesWritten);
+	void DecodeFile(std::string input, std::string output, size_t& bytesRead, size_t& bytesWritten);
 
 private:
 	// The root of the encoding tree
@@ -114,7 +116,11 @@ private:
 
 	// The longest bitstring, used for padding to the nearest byte when encoding the last byte of a file
 	std::string PaddingHint = "";
-	unsigned char PaddingChar = 0;
+
+	// If set to true, the encoding table must be rebuilt from the tree
+	//
+	// Set after a file is decoded, since the tree is replaced with the one in the file
+	bool IsDirty = true;
 
 	// Write the subtree from the specified node to the specified output stream
 	static void WriteEncodingTree(std::ostream& output, HuffmanTreeNode* node, size_t& bytesWritten);
@@ -135,9 +141,4 @@ private:
 	// 
 	// The input string MUST be 8 characters, and can only consist of '0' and '1'
 	static unsigned char BitfieldToByte(std::string in);
-
-	// If set to true, the encoding table must be rebuilt from the tree
-	//
-	// Set after a file is decoded, since the tree is replaced with the one in the file
-	bool IsDirty = true;
 };

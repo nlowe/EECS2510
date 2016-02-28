@@ -10,6 +10,10 @@
 #include <stdio.h>
 #include <tchar.h>
 
+#ifdef _DEBUG
+#define DEBUG
+#endif
+
 
 
 // TODO: reference additional headers your program requires here
