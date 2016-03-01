@@ -141,16 +141,16 @@ int main(int argc, char* argv[])
 // Perform an encoding operation using the specified command-line options
 bool doEncode(CommandLineOptions options)
 {
-	// Build the encoder from the input file and record how long that takes
-	auto ctor_start = chrono::system_clock::now();
-	encoder = HuffmanEncoder::InitializeFromFile(options.input);
-	auto ctor_end = chrono::system_clock::now();
-
-	size_t read = 0;
-	size_t written = 0;
-
 	try
 	{
+		// Build the encoder from the input file and record how long that takes
+		auto ctor_start = chrono::system_clock::now();
+		encoder = HuffmanEncoder::InitializeFromFile(options.input);
+		auto ctor_end = chrono::system_clock::now();
+
+		size_t read = 0;
+		size_t written = 0;
+
 		// Encode the file and record how long that takes
 		auto encode_start = chrono::system_clock::now();
 		encoder->EncodeFile(options.input, options.output, read, written);
@@ -177,27 +177,27 @@ bool doEncode(CommandLineOptions options)
 // Perform a decode operation using the specified options
 bool doDecode(CommandLineOptions options)
 {
-	auto inFile = options.input;
-	auto outFile = options.output;
-
-	// If we haven't already encoded a file, then we need to make an empty encoder/decoder
-	if (!options.encode)
-	{
-		encoder = new HuffmanEncoder();
-	}
-	else
-	{
-		// If we have, we need to change the output file, since it gets used twice
-		// (once to save encoding output, and once to save decoding output)
-		inFile = options.output;
-		outFile = PrependExtension(options.input, "hz");
-	}
-
-	size_t read = 0;
-	size_t written = 0;
-
 	try
 	{
+		auto inFile = options.input;
+		auto outFile = options.output;
+
+		// If we haven't already encoded a file, then we need to make an empty encoder/decoder
+		if (!options.encode)
+		{
+			encoder = new HuffmanEncoder();
+		}
+		else
+		{
+			// If we have, we need to change the output file, since it gets used twice
+			// (once to save encoding output, and once to save decoding output)
+			inFile = options.output;
+			outFile = PrependExtension(options.input, "hz");
+		}
+
+		size_t read = 0;
+		size_t written = 0;
+
 		// Decode the file and record how long that takes
 		auto start = chrono::system_clock::now();
 		encoder->DecodeFile(inFile, outFile, read, written);
