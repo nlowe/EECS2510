@@ -1,5 +1,5 @@
 /*
- * HuffmanEncoder.cpp - Implementation for a Huffman Encoder
+ * HuffmanEncoder.cpp - Implementation for a Huffman Encoder / Decoder
  *
  * Built for EECS2510 - Nonlinear Data Structures
  *	at The University of Toledo, Spring 2016

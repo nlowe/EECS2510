@@ -68,7 +68,7 @@ bool doDecode(CommandLineOptions options);
 // The main entry point of the application
 int main(int argc, char* argv[])
 {
-	// The project spec requires main to encode and decode a file that is hard-coded
+	// The project spec requires main to encode and decode a file that is hard-coded for easy testing
 	// If we don't have any arguments and we're in debug mode, assume it's being tested
 #ifdef DEBUG
 	if(argc == 1)
@@ -79,13 +79,13 @@ int main(int argc, char* argv[])
 
 		CommandLineOptions interactiveOptions;
 
-		interactiveOptions.input = INPUT_FILE;
+		interactiveOptions.input  = INPUT_FILE;
 		interactiveOptions.output = ENCODED_FILE;
 
 		cout << "Encoding file " << INPUT_FILE << " to " << ENCODED_FILE << endl;
 		if (!doEncode(interactiveOptions)) return EXIT_ENCODE_FAILED;
 
-		interactiveOptions.input = ENCODED_FILE;
+		interactiveOptions.input  = ENCODED_FILE;
 		interactiveOptions.output = DECODED_FILE;
 
 		cout << "Decoding file " << ENCODED_FILE << " to " << DECODED_FILE << endl;

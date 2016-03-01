@@ -1,5 +1,5 @@
 /*
- * HuffmanEncoder.h - Public interface for a huffman encoder
+ * HuffmanEncoder.h - Public interface for a Huffman encoder / decoder
  *
  * Built for EECS2510 - Nonlinear Data Structures
  *	at The University of Toledo, Spring 2016

@@ -31,10 +31,11 @@
 namespace verbose
 {
 	// A global flag to enable or disable verbose output
+	// The implementation is defined in main.cpp so that multiple files can access this flag
 	extern bool enable;
 
 	// Write a verbose message to standard output if enabled
-	static void write(std::string msg)
+	inline void write(std::string msg)
 	{
 		if (enable) std::cout << msg << std::endl;
 	}
