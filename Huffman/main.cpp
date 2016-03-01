@@ -159,7 +159,7 @@ bool doEncode(CommandLineOptions options)
 		// Calculate the compression ratio
 		auto ratio = static_cast<double>(written) / static_cast<double>(read);
 
-		cout << setiosflags(ios::fixed) << setprecision(2);
+		cout << setiosflags(ios::fixed) << setprecision(3);
 		cout << "File encoded. In: " << read << " bytes, Out: " << written << " bytes. Ratio: " << ratio;
 		cout << "% Time: " << chrono::duration_cast<chrono::duration<float>>(ctor_end - ctor_start).count();
 		cout << "s initialization, " << chrono::duration_cast<chrono::duration<float>>(encode_end - encode_start).count();
@@ -203,7 +203,7 @@ bool doDecode(CommandLineOptions options)
 		encoder->DecodeFile(inFile, outFile, read, written);
 		auto end = chrono::system_clock::now();
 
-		cout << setiosflags(ios::fixed) << setprecision(2);
+		cout << setiosflags(ios::fixed) << setprecision(3);
 		cout << "File decoded. In: " << read << " bytes, Out: " << written << " bytes, Time: ";
 		cout << chrono::duration_cast<chrono::duration<float>>(end - start).count() << "s" << endl;
 	}
