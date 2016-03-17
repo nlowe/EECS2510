@@ -43,7 +43,6 @@ class AVL : public IPerformanceStatsTracker
 public:
 	AVL();
 	~AVL();
-
 	// Adds the word to the tree. If the word already exists, its occurrance count is incremeneted
 	// Returns:
 	//		A pointer to the word represented by the key
@@ -62,6 +61,12 @@ public:
 	bool isEmpty() const { return Root == nullptr; }
 private:
 	AVLTreeNode* Root = nullptr;
+
+	static void updateBalanceFactors(std::string word, AVLTreeNode*& previous, AVLTreeNode* toInsert);
+	void doRotations(AVLTreeNode* F, AVLTreeNode* A, AVLTreeNode* B, char delta);
+	static void rotateLeftLeft(AVLTreeNode* F, AVLTreeNode* A, AVLTreeNode* B);
+	static void rotateRightRight(AVLTreeNode* F, AVLTreeNode* A, AVLTreeNode* B);
+
 
 	// Finds a node in the tree with the specified key
 	AVLTreeNode* find(std::string key);

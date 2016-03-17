@@ -12,6 +12,8 @@ AVL::~AVL()
 {
 }
 
+
+
 Word* AVL::add(std::string word)
 {
 	// The tree is empty, just update the root pointer
@@ -22,11 +24,15 @@ Word* AVL::add(std::string word)
 		return Root->Payload;
 	}
 
-	// Otherwise, we need to find where to put it
+	// Otherwise, we need to find where to put it (P in the slides)
 	AVLTreeNode* previous;
-	AVLTreeNode* lastRotateCandidateParent = nullptr;
+	// F in the slides
+	AVLTreeNode* lastRotateCandidateParent = nullptr; 
+	// A in the slides
 	AVLTreeNode* lastRotateCandidate = Root;
+	// B in the slides
 	AVLTreeNode* nextAfterRotationCandidate;
+	// Q in the slides
 	AVLTreeNode* candidate = Root;
 	char delta = 0;
 
@@ -90,21 +96,8 @@ Word* AVL::add(std::string word)
 		nextAfterRotationCandidate = previous;
 	}
 
-	while(previous != toInsert)
-	{
-		int branch = word.compare(previous->Payload->key);
-
-		if(branch < 0)
-		{
-			previous->BalanceFactor += 1;
-			previous = static_cast<AVLTreeNode*>(previous->Left);
-		}
-		else
-		{
-			previous->BalanceFactor -= 1;
-			previous = static_cast<AVLTreeNode*>(previous->Left);
-		}
-	}
+	// Update balance factors, moving pointers along the way
+	updateBalanceFactors(word, previous, toInsert);
 
 	if(lastRotateCandidate->BalanceFactor == 0)
 	{
@@ -116,57 +109,109 @@ Word* AVL::add(std::string word)
 		// Tree was out of balance, but is now balanced enough
 		lastRotateCandidate->BalanceFactor = 0;
 	}
-	else if(delta == 1)
+	else
 	{
-		if(nextAfterRotationCandidate->BalanceFactor == 1)
+		// Otherwise, we have rotations to do
+		doRotations(lastRotateCandidateParent, lastRotateCandidate, nextAfterRotationCandidate, delta);
+	}
+
+	return toInsert->Payload;
+}
+
+void AVL::updateBalanceFactors(std::string word, AVLTreeNode*& lastRotateCandidate, AVLTreeNode* toInsert)
+{
+	while (lastRotateCandidate != toInsert)
+	{
+		int branch = word.compare(lastRotateCandidate->Payload->key);
+
+		if (branch < 0)
 		{
-			// TODO: Left-Left rotation
+			lastRotateCandidate->BalanceFactor += 1;
+			lastRotateCandidate = static_cast<AVLTreeNode*>(lastRotateCandidate->Left);
+		}
+		else
+		{
+			lastRotateCandidate->BalanceFactor -= 1;
+			lastRotateCandidate = static_cast<AVLTreeNode*>(lastRotateCandidate->Left);
+		}
+	}
+}
+
+void AVL::doRotations(AVLTreeNode* F, AVLTreeNode* A, AVLTreeNode* B, char delta)
+{
+	if (delta == 1)
+	{
+		if (B->BalanceFactor == 1)
+		{
+			rotateLeftLeft(F, A, B);
 		}
 		else
 		{
 			// TODO: Left-Right rotation
-			auto pivot      = static_cast<AVLTreeNode*>(nextAfterRotationCandidate->Right);
-			auto pivotLeft  = static_cast<AVLTreeNode*>(pivot->Left);
+			auto pivot = static_cast<AVLTreeNode*>(B->Right);
+			auto pivotLeft = static_cast<AVLTreeNode*>(pivot->Left);
 			auto pivotRight = static_cast<AVLTreeNode*>(pivot->Right);
 
-			switch(pivot->BalanceFactor)
+			switch (pivot->BalanceFactor)
 			{
-				
+				// ???
 			}
 
 			pivot->BalanceFactor = 0;
-			nextAfterRotationCandidate = pivot;
+			B = pivot;
 		}
 	}
 	else
 	{
-		if (nextAfterRotationCandidate->BalanceFactor == -1)
+		if (B->BalanceFactor == -1)
 		{
-			// TODO: Right-Right rotation
+			rotateRightRight(F, A, B);
 		}
 		else
 		{
 			// TODO: Right-left rotation
-			auto pivot = static_cast<AVLTreeNode*>(nextAfterRotationCandidate->Left);
+			auto pivot = static_cast<AVLTreeNode*>(B->Left);
 		}
 	}
 
 	// Check to see if the root was re-balanced
 	// Otherwise, perform the final child pointer changes
-	if(lastRotateCandidateParent == nullptr)
+	if (F == nullptr)
 	{
-		this->Root = nextAfterRotationCandidate;
+		this->Root = B;
 	}
-	else if(lastRotateCandidate == lastRotateCandidateParent->Left)
+	else if (A == F->Left)
 	{
-		lastRotateCandidateParent->Left = nextAfterRotationCandidate;
+		F->Left = B;
 	}
 	else
 	{
-		lastRotateCandidateParent->Right = nextAfterRotationCandidate;
+		F->Right = B;
 	}
+}
 
-	return toInsert->Payload;
+void AVL::rotateLeftLeft(AVLTreeNode* F, AVLTreeNode* A, AVLTreeNode* B)
+{
+	// Perform a Left-Left rotation
+	// The rotation point's left child becomes the right sub-tree if it's left child
+	A->Left = B->Right;
+	// The right subtree of the rotation point is now rotated "up" and left
+	B->Right = A;
+	// Finally, update the node above the rotation point to point to the new sub-root
+	if (F->Left == A) F->Left = B;
+	else F->Right = B;
+}
+
+void AVL::rotateRightRight(AVLTreeNode* F, AVLTreeNode* A, AVLTreeNode* B)
+{
+	// Perform a Right-Right rotation
+	// The rotation point's right child becomes the left sub-tree if it's right child
+	A->Right = B->Left;
+	// The left subtree of the rotation point is now rotated "up" and right
+	B->Left = A;
+	// Finally, update the node above the rotation point to point to the new sub-root
+	if (F->Left == A) F->Left = B;
+	else F->Right = B;
 }
 
 Word* AVL::get(std::string key)
