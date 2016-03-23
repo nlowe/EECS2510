@@ -2,16 +2,13 @@
 #include "AVL.h"
 #include <iostream>
 
-
 AVL::AVL()
 {
 }
 
-
 AVL::~AVL()
 {
 }
-
 
 
 Word* AVL::add(std::string word)
@@ -29,11 +26,11 @@ Word* AVL::add(std::string word)
 	// F in the slides
 	AVLTreeNode* lastRotateCandidateParent = nullptr; 
 	// A in the slides
-	AVLTreeNode* lastRotateCandidate = Root;
+	AVLTreeNode* lastRotateCandidate = static_cast<AVLTreeNode*>(Root);
 	// B in the slides
 	AVLTreeNode* nextAfterRotationCandidate;
 	// Q in the slides
-	AVLTreeNode* candidate = Root;
+	AVLTreeNode* candidate = static_cast<AVLTreeNode*>(Root);
 	char delta = 0;
 
 	int branchComparisonResult;
@@ -43,6 +40,8 @@ Word* AVL::add(std::string word)
 		// Remember where we used to be
 		previous = candidate;
 
+		// If this node's balance factor is already +/- 1 it may go to +/- 2 after the insertion
+		// Remember where the last node like this is, since we may have to rotate around it later
 		if(candidate->BalanceFactor != 0)
 		{
 			lastRotateCandidateParent = lastRotateCandidate;
@@ -73,31 +72,39 @@ Word* AVL::add(std::string word)
 		}
 	} while (candidate != nullptr);
 
+	// We didn't find the node already, so we have to insert a new one
 	auto toInsert = new AVLTreeNode(new Word(word));
 
-	// Graft the new leaf node into the tree, and then fix the balance factors
+	// Graft the new leaf node into the tree
 	this->referenceChanges++;
 	if (branchComparisonResult < 0)
 	{
-		delta = 1;
 		previous->Left = toInsert;
-		
-		previous = lastRotateCandidate;
-		previous->BalanceFactor += delta;
-		nextAfterRotationCandidate = previous;
+	}
+	else
+	{
+		previous->Right = toInsert;
+	}
+
+	// Figure out if we took the left or right branch after the last node with
+	// a +/- 1 balance factor prior to the insert
+	if(word.compare(lastRotateCandidate->Payload->key) < 0)
+	{
+		delta = 1;
+
+		candidate = static_cast<AVLTreeNode*>(lastRotateCandidate->Left);
+		nextAfterRotationCandidate = candidate;
 	}
 	else
 	{
 		delta = -1;
-		previous->Right = toInsert;
 
-		previous = lastRotateCandidate;
-		previous->BalanceFactor += delta;
-		nextAfterRotationCandidate = previous;
+		candidate = static_cast<AVLTreeNode*>(lastRotateCandidate->Right);
+		nextAfterRotationCandidate = candidate;
 	}
 
 	// Update balance factors, moving pointers along the way
-	updateBalanceFactors(word, previous, toInsert);
+	updateBalanceFactors(word, candidate, toInsert);
 
 	if(lastRotateCandidate->BalanceFactor == 0)
 	{
@@ -132,134 +139,77 @@ void AVL::updateBalanceFactors(std::string word, AVLTreeNode*& lastRotateCandida
 		else
 		{
 			lastRotateCandidate->BalanceFactor -= 1;
-			lastRotateCandidate = static_cast<AVLTreeNode*>(lastRotateCandidate->Left);
+			lastRotateCandidate = static_cast<AVLTreeNode*>(lastRotateCandidate->Right);
 		}
 	}
 }
 
 void AVL::doRotations(AVLTreeNode* F, AVLTreeNode* A, AVLTreeNode* B, char delta)
 {
-	if (delta == 1)
+	AVLTreeNode* newSubRoot;
+
+	if(A->BalanceFactor > 0)
 	{
-		if (B->BalanceFactor == 1)
+		// Somewhere in the left sub-tree
+		if(B->BalanceFactor == -1)
 		{
-			rotateLeftLeft(F, A, B);
+			// Left Right case, perform a left rotation first to make it a LL case
+			A->Left = rotateLeft(B);
+			B->BalanceFactor = 0;
 		}
-		else
-		{
-			// TODO: Left-Right rotation
-			auto pivot = static_cast<AVLTreeNode*>(B->Right);
-			auto pivotLeft = static_cast<AVLTreeNode*>(pivot->Left);
-			auto pivotRight = static_cast<AVLTreeNode*>(pivot->Right);
 
-			switch (pivot->BalanceFactor)
-			{
-				// ???
-			}
-
-			pivot->BalanceFactor = 0;
-			B = pivot;
-		}
+		// Now, rotate right
+		newSubRoot = rotateRight(A);
+		A->BalanceFactor -= 1;
 	}
 	else
 	{
-		if (B->BalanceFactor == -1)
+		if(B->BalanceFactor == 1)
 		{
-			rotateRightRight(F, A, B);
+			// Right Left case, perform a right rotation first to make it a RR case
+			A->Right = rotateRight(B);
+			B->BalanceFactor = 0;
 		}
-		else
-		{
-			// TODO: Right-left rotation
-			auto pivot = static_cast<AVLTreeNode*>(B->Left);
-		}
+
+		// Now, rotate left
+		newSubRoot = rotateLeft(A);
+		A->BalanceFactor += 1;
 	}
 
-	// Check to see if the root was re-balanced
-	// Otherwise, perform the final child pointer changes
-	if (F == nullptr)
+	if(F != nullptr && F != A)
 	{
-		this->Root = B;
-	}
-	else if (A == F->Left)
-	{
-		F->Left = B;
+		// We didn't rotate around the root
+		// So update A's parent to point to the new sub-root
+		if (F->Left == A) F->Left = newSubRoot;
+		else F->Right = newSubRoot;
 	}
 	else
 	{
-		F->Right = B;
+		// We re-balanced around the root
+		// The new root is now the new sub root
+		this->Root = newSubRoot;
 	}
+	
 }
 
-void AVL::rotateLeftLeft(AVLTreeNode* F, AVLTreeNode* A, AVLTreeNode* B)
+AVLTreeNode* AVL::rotateLeft(AVLTreeNode* n)
 {
-	// Perform a Left-Left rotation
-	// The rotation point's left child becomes the right sub-tree if it's left child
-	A->Left = B->Right;
-	// The right subtree of the rotation point is now rotated "up" and left
-	B->Right = A;
-	// Finally, update the node above the rotation point to point to the new sub-root
-	if (F->Left == A) F->Left = B;
-	else F->Right = B;
+	auto c = static_cast<AVLTreeNode*>(n->Right);
+
+	n->Right = c->Left;
+	c->Left = n;
+	c->BalanceFactor += 1;
+
+	return c;
 }
 
-void AVL::rotateRightRight(AVLTreeNode* F, AVLTreeNode* A, AVLTreeNode* B)
+AVLTreeNode* AVL::rotateRight(AVLTreeNode* n)
 {
-	// Perform a Right-Right rotation
-	// The rotation point's right child becomes the left sub-tree if it's right child
-	A->Right = B->Left;
-	// The left subtree of the rotation point is now rotated "up" and right
-	B->Left = A;
-	// Finally, update the node above the rotation point to point to the new sub-root
-	if (F->Left == A) F->Left = B;
-	else F->Right = B;
-}
+	auto c = static_cast<AVLTreeNode*>(n->Left);
 
-Word* AVL::get(std::string key)
-{
-	auto node = find(key);
+	n->Left = c->Right;
+	c->Right = n;
+	c->BalanceFactor -= 1;
 
-	// Make sure the key is in the tree to start with
-	if (node == nullptr) return nullptr;
-	return node->Payload;
-}
-
-// A helper function to find a node in the tree with the specified key
-AVLTreeNode* AVL::find(std::string key)
-{
-	// The tree is empty, so there is no node that is identified by the specified key
-	if (isEmpty()) return nullptr;
-
-	BinaryTreeNode* candidate = Root;
-	do
-	{
-		auto branch = key.compare(candidate->Payload->key);
-		this->comparisons++;
-
-		if (branch < 0)
-		{
-			candidate = candidate->Left;
-		}
-		else if (branch == 0)
-		{
-			// We found the node!
-			return static_cast<AVLTreeNode*>(candidate);
-		}
-		else
-		{
-			candidate = candidate->Right;
-		}
-	} while (candidate != nullptr);
-
-	// We didn't find the node :(
-	return nullptr;
-}
-
-// A helper function to recursively print the payloads of the specified sub-tree in-order
-void AVL::inOrderPrint(AVLTreeNode* node) const
-{
-	if (node == nullptr) return;
-
-	inOrderPrint(static_cast<AVLTreeNode*>(node->Left));
-	std::cout << node->Payload->key << " " << node->Payload->count << std::endl;
-	inOrderPrint(static_cast<AVLTreeNode*>(node->Right));
+	return c;
 }
