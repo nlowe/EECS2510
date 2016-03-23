@@ -93,7 +93,7 @@ public:
 
 	// Returns true iff the tree is empty
 	bool isEmpty() const { return Root == nullptr; }
-private:
+protected:
 	// The node at the root of the tree
 	BinaryTreeNode* Root = nullptr;
 

@@ -26,8 +26,8 @@
  */
 
 #pragma once
-#include "IPerformanceStatsTracker.h"
 #include "BST.h"
+#include <iostream>
 
 // A node in an AVL Tree. Basically, a Binary Tree Node
 // with an additional field for keeping track of the "balance factor"
@@ -49,15 +49,32 @@ public:
 	//		A pointer to the word represented by the key
 	Word* add(std::string key) override;
 
-private:
-	AVLTreeNode* Root = nullptr;
+	void debug_PrintBalanceFactors()
+	{
+		debug_PrintBalanceFactors(static_cast<AVLTreeNode*>(Root));
+	}
 
+private:
 	static void updateBalanceFactors(std::string word, AVLTreeNode*& previous, AVLTreeNode* toInsert);
+
+	void debug_PrintBalanceFactors(AVLTreeNode* n)
+	{
+		if (n == nullptr) return;
+
+		debug_PrintBalanceFactors(static_cast<AVLTreeNode*>(n->Left));
+		std::cout << n->Payload->key << ": " << +n->BalanceFactor << std::endl;
+		debug_PrintBalanceFactors(static_cast<AVLTreeNode*>(n->Right));
+	}
+	
 	void doRotations(AVLTreeNode* F, AVLTreeNode* A, AVLTreeNode* B, char delta);
-	static void rotateLeftLeft(AVLTreeNode* F, AVLTreeNode* A, AVLTreeNode* B);
-	static void rotateLeftRight(AVLTreeNode* F, AVLTreeNode* A, AVLTreeNode* B);
-	static void rotateRightRight(AVLTreeNode* F, AVLTreeNode* A, AVLTreeNode* B);
-	static void rotateRightLeft(AVLTreeNode* F, AVLTreeNode* A, AVLTreeNode* B);
+	
+	// Perform a left rotation about node n. This pulls up a node from n's right sub tree, pushing
+	// n down one level to the left. Returns the new root of the sub-tree.
+	static AVLTreeNode* rotateLeft(AVLTreeNode* n);
+
+	// Perform a right rotation about node n. This pulls up a node from n's left sub tree, pushing
+	// n down one level to the right. Returns the new root of the sub-tree.
+	static AVLTreeNode* rotateRight(AVLTreeNode* n);
 
 };
 

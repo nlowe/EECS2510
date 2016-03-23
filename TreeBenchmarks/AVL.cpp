@@ -26,11 +26,11 @@ Word* AVL::add(std::string word)
 	// F in the slides
 	AVLTreeNode* lastRotateCandidateParent = nullptr; 
 	// A in the slides
-	AVLTreeNode* lastRotateCandidate = Root;
+	AVLTreeNode* lastRotateCandidate = static_cast<AVLTreeNode*>(Root);
 	// B in the slides
 	AVLTreeNode* nextAfterRotationCandidate;
 	// Q in the slides
-	AVLTreeNode* candidate = Root;
+	AVLTreeNode* candidate = static_cast<AVLTreeNode*>(Root);
 	char delta = 0;
 
 	int branchComparisonResult;
@@ -40,6 +40,8 @@ Word* AVL::add(std::string word)
 		// Remember where we used to be
 		previous = candidate;
 
+		// If this node's balance factor is already +/- 1 it may go to +/- 2 after the insertion
+		// Remember where the last node like this is, since we may have to rotate around it later
 		if(candidate->BalanceFactor != 0)
 		{
 			lastRotateCandidateParent = lastRotateCandidate;
@@ -70,11 +72,11 @@ Word* AVL::add(std::string word)
 		}
 	} while (candidate != nullptr);
 
+	// We didn't find the node already, so we have to insert a new one
 	auto toInsert = new AVLTreeNode(new Word(word));
 
-	// Graft the new leaf node into the tree, and then fix the balance factors
+	// Graft the new leaf node into the tree
 	this->referenceChanges++;
-	
 	if (branchComparisonResult < 0)
 	{
 		previous->Left = toInsert;
@@ -84,6 +86,8 @@ Word* AVL::add(std::string word)
 		previous->Right = toInsert;
 	}
 
+	// Figure out if we took the left or right branch after the last node with
+	// a +/- 1 balance factor prior to the insert
 	if(word.compare(lastRotateCandidate->Payload->key) < 0)
 	{
 		delta = 1;
@@ -142,124 +146,70 @@ void AVL::updateBalanceFactors(std::string word, AVLTreeNode*& lastRotateCandida
 
 void AVL::doRotations(AVLTreeNode* F, AVLTreeNode* A, AVLTreeNode* B, char delta)
 {
-	if (delta == 1)
+	AVLTreeNode* newSubRoot;
+
+	if(A->BalanceFactor > 0)
 	{
-		if (B->BalanceFactor == 1)
+		// Somewhere in the left sub-tree
+		if(B->BalanceFactor == -1)
 		{
-			rotateLeftLeft(F, A, B);
+			// Left Right case, perform a left rotation first to make it a LL case
+			A->Left = rotateLeft(B);
+			B->BalanceFactor = 0;
 		}
-		else
-		{
-			auto C = static_cast<AVLTreeNode*>(B->Right);
-			rotateLeftRight(F, A, B);
-			B = C;
-		}
+
+		// Now, rotate right
+		newSubRoot = rotateRight(A);
+		A->BalanceFactor -= 1;
 	}
 	else
 	{
-		if (B->BalanceFactor == -1)
+		if(B->BalanceFactor == 1)
 		{
-			rotateRightRight(F, A, B);
+			// Right Left case, perform a right rotation first to make it a RR case
+			A->Right = rotateRight(B);
+			B->BalanceFactor = 0;
 		}
-		else
-		{
-			// TODO: Right-left rotation
-			auto pivot = static_cast<AVLTreeNode*>(B->Left);
-		}
+
+		// Now, rotate left
+		newSubRoot = rotateLeft(A);
+		A->BalanceFactor += 1;
 	}
 
-	// Check to see if the root was re-balanced
-	// Otherwise, perform the final child pointer changes
-	if (F == nullptr)
+	if(F != nullptr && F != A)
 	{
-		this->Root = B;
-	}
-	else if (A == F->Left)
-	{
-		F->Left = B;
+		// We didn't rotate around the root
+		// So update A's parent to point to the new sub-root
+		if (F->Left == A) F->Left = newSubRoot;
+		else F->Right = newSubRoot;
 	}
 	else
 	{
-		F->Right = B;
+		// We re-balanced around the root
+		// The new root is now the new sub root
+		this->Root = newSubRoot;
 	}
+	
 }
 
-void AVL::rotateLeftLeft(AVLTreeNode* F, AVLTreeNode* A, AVLTreeNode* B)
+AVLTreeNode* AVL::rotateLeft(AVLTreeNode* n)
 {
-	// The rotation point's left child becomes the right sub-tree of it's left child
-	A->Left = B->Right;
-	// The right subtree of the rotation point is now rotated "up" and left
-	B->Right = A;
+	auto c = static_cast<AVLTreeNode*>(n->Right);
 
-	// Finally, update the node above the rotation point (if there is one) to point to the new sub-root
-	if(F != nullptr)
-	{
-		if (F->Left == A) F->Left = B;
-		else F->Right = B;
-	}
+	n->Right = c->Left;
+	c->Left = n;
+	c->BalanceFactor += 1;
+
+	return c;
 }
 
-void AVL::rotateLeftRight(AVLTreeNode* F, AVLTreeNode* A, AVLTreeNode* B)
+AVLTreeNode* AVL::rotateRight(AVLTreeNode* n)
 {
-	auto C = static_cast<AVLTreeNode*>(B->Right);
+	auto c = static_cast<AVLTreeNode*>(n->Left);
 
-	B->Right = C->Left;
-	C->Left = B;
-	A->Left = C->Right;
-	C->Right = A;
+	n->Left = c->Right;
+	c->Right = n;
+	c->BalanceFactor -= 1;
 
-	// Finally, update the node above the rotation point (if there is one) to point to the new sub-root
-	if (F != nullptr)
-	{
-		if (F->Left == A) F->Left = B;
-		else F->Right = B;
-	}
-
-	switch (C->BalanceFactor)
-	{
-		case 0: A->BalanceFactor = B->BalanceFactor = C->BalanceFactor = 0; break;
-		case 1: A->BalanceFactor = -1; B->BalanceFactor = C->BalanceFactor = 0; break;
-		case -1: B->BalanceFactor = 1; A->BalanceFactor = C->BalanceFactor = 0; break;
-		default: throw std::runtime_error("The tree was broken before the insert and cannot be fixed");
-	}
-}
-
-void AVL::rotateRightRight(AVLTreeNode* F, AVLTreeNode* A, AVLTreeNode* B)
-{
-	// Perform a Right-Right rotation
-	// The rotation point's right child becomes the left sub-tree of it's right child
-	A->Right = B->Left;
-	// The left subtree of the rotation point is now rotated "up" and right
-	B->Left = A;
-	// Finally, update the node above the rotation point (if there is one) to point to the new sub-root
-	if (F != nullptr)
-	{
-		if (F->Left == A) F->Left = B;
-		else F->Right = B;
-	}
-}
-
-void AVL::rotateRightLeft(AVLTreeNode* F, AVLTreeNode* A, AVLTreeNode* B)
-{
-	auto C = static_cast<AVLTreeNode*>(B->Right);
-
-	B->Left = C->Right;
-	C->Right = B;
-	A->Right = C->Left;
-	C->Left = A;
-
-	// Finally, update the node above the rotation point (if there is one) to point to the new sub-root
-	if (F != nullptr)
-	{
-		if (F->Left == A) F->Left = B;
-		else F->Right = B;
-	}
-
-	switch (C->BalanceFactor)
-	{
-		case 0: A->BalanceFactor = B->BalanceFactor = C->BalanceFactor = 0; break;
-		case 1: A->BalanceFactor = -1; B->BalanceFactor = C->BalanceFactor = 0; break;
-		case -1: B->BalanceFactor = 1; A->BalanceFactor = C->BalanceFactor = 0; break;
-		default: throw std::runtime_error("The tree was broken before the insert and cannot be fixed");
-	}
+	return c;
 }
