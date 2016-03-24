@@ -29,7 +29,6 @@
 #include "Word.h"
 #include <string>
 #include "IPerformanceStatsTracker.h"
-#include <algorithm>
 
 // A node in a Binary Tree
 struct BinaryTreeNode
@@ -51,14 +50,6 @@ struct BinaryTreeNode
 		if (Left != nullptr) delete Left;
 		if (Right != nullptr) delete Right;
 	}
-
-	// The height of the subtree starting from this node
-	// Returns: One plus the height of the larget subtree (either this node's left or right subtree)
-	size_t Height() const
-	{
-		// TODO: Can we do this? Not sure if we're "allowed" to use std::max in this project
-		return 1 + std::max(Left == nullptr ? 0 : Left->Height(), Right == nullptr ? 0 : Right->Height());
-	}
 };
 
 // A Tree that exhibits the Binary Search Tree Property :
@@ -77,7 +68,7 @@ public:
 	// Adds the word to the tree. If the word already exists, its occurrance count is incremeneted
 	// Returns:
 	//		A pointer to the word represented by the key
-	virtual Word* add(std::string key);
+	Word* add(std::string key);
 
 	// Finds the word in the tree with the specified tree. 
 	// Returns:
@@ -88,12 +79,9 @@ public:
 	// Prints all words and their occurrance count in alphabetical order to std::cout
 	void inOrderPrint() const { inOrderPrint(Root); }
 
-	// The height of this tree (0 if empty)
-	size_t height() const { return isEmpty() ? 0 : Root->Height(); }
-
 	// Returns true iff the tree is empty
 	bool isEmpty() const { return Root == nullptr; }
-protected:
+private:
 	// The node at the root of the tree
 	BinaryTreeNode* Root = nullptr;
 

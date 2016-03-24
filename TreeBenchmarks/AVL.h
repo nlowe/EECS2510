@@ -26,8 +26,8 @@
  */
 
 #pragma once
-#include "BST.h"
-#include <iostream>
+#include "IPerformanceStatsTracker.h"
+#include "../BinarySearchTrees/BST.h"
 
 // A node in an AVL Tree. Basically, a Binary Tree Node
 // with an additional field for keeping track of the "balance factor"
@@ -38,43 +38,40 @@ struct AVLTreeNode : BinaryTreeNode
 	char BalanceFactor = 0;
 };
 
-class AVL : public BST
+class AVL : public IPerformanceStatsTracker
 {
 public:
 	AVL();
 	~AVL();
-
 	// Adds the word to the tree. If the word already exists, its occurrance count is incremeneted
 	// Returns:
 	//		A pointer to the word represented by the key
-	Word* add(std::string key) override;
+	Word* add(std::string key);
 
-	void debug_PrintBalanceFactors()
-	{
-		debug_PrintBalanceFactors(static_cast<AVLTreeNode*>(Root));
-	}
+	// Finds the word in the tree with the specified tree. 
+	// Returns:
+	//		A pointer to the word represented by the specified key
+	//		A null pointer if the key does not exist in the tree
+	Word* get(std::string key);
 
+	// Prints all words and their occurrance count in alphabetical order to std::cout
+	void inOrderPrint() const { inOrderPrint(Root); }
+
+	// Returns true iff the tree is empty
+	bool isEmpty() const { return Root == nullptr; }
 private:
+	AVLTreeNode* Root = nullptr;
+
 	static void updateBalanceFactors(std::string word, AVLTreeNode*& previous, AVLTreeNode* toInsert);
-
-	void debug_PrintBalanceFactors(AVLTreeNode* n)
-	{
-		if (n == nullptr) return;
-
-		debug_PrintBalanceFactors(static_cast<AVLTreeNode*>(n->Left));
-		std::cout << n->Payload->key << ": " << +n->BalanceFactor << std::endl;
-		debug_PrintBalanceFactors(static_cast<AVLTreeNode*>(n->Right));
-	}
-	
 	void doRotations(AVLTreeNode* F, AVLTreeNode* A, AVLTreeNode* B, char delta);
-	
-	// Perform a left rotation about node n. This pulls up a node from n's right sub tree, pushing
-	// n down one level to the left. Returns the new root of the sub-tree.
-	static AVLTreeNode* rotateLeft(AVLTreeNode* n);
+	static void rotateLeftLeft(AVLTreeNode* F, AVLTreeNode* A, AVLTreeNode* B);
+	static void rotateRightRight(AVLTreeNode* F, AVLTreeNode* A, AVLTreeNode* B);
 
-	// Perform a right rotation about node n. This pulls up a node from n's left sub tree, pushing
-	// n down one level to the right. Returns the new root of the sub-tree.
-	static AVLTreeNode* rotateRight(AVLTreeNode* n);
 
+	// Finds a node in the tree with the specified key
+	AVLTreeNode* find(std::string key);
+
+	// Recursively prints the subtree starting from the specified node in order
+	void inOrderPrint(AVLTreeNode* node) const;
 };
 
