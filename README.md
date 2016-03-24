@@ -1,4 +1,6 @@
 # EECS2510 - Project Code and Samples
+[![Build status](https://ci.appveyor.com/api/projects/status/bmcfkd78driyqq47?svg=true)](https://ci.appveyor.com/project/techwiz24/eecs2510)
+
 This repository contains the projects and code samples for the Spring 2016 EECS2510 (Non-Linear Data Structures in C++) course offered by the University of Toledo.
 
 ## Projects
