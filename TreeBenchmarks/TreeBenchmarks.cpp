@@ -17,7 +17,7 @@ int main()
 
 	tree.debug_PrintBalanceFactors();
 
-	assert(tree.height() == 2);
+	assert(tree.height() == 3);
 
     return 0;
 }

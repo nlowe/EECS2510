@@ -21,24 +21,12 @@
     <ClInclude Include="targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="HuffmanEncoder.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Verbose.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="CommandLineOptions.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="HuffmanEncoder.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
