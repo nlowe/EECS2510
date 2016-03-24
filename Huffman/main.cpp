@@ -32,9 +32,9 @@
 #include <chrono>
 #include <iomanip>
 
-#include "CommandLineOptions.h"
-#include "HuffmanEncoder.h"
-#include "Verbose.h"
+#include "../CustomDataTypes/CommandLineOptions.h"
+#include "../CustomDataTypes/HuffmanEncoder.h"
+#include "../CustomDataTypes/Verbose.h"
 
 using namespace std;
 

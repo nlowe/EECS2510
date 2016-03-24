@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "CppUnitTest.h"
 
-#include "AVL.h"
+#include "../CustomDataTypes/AVL.h"
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
@@ -24,7 +24,7 @@ namespace CustomDataTypesTests
 		{
 			this->tree->add("foobar");
 
-			Assert::AreEqual(1ULL, this->tree->height());
+			Assert::AreEqual(static_cast<size_t>(1), this->tree->height());
 		}
 
 		TEST_METHOD(FailingTest)

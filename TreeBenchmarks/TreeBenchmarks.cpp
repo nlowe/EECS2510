@@ -2,7 +2,7 @@
 //
 
 #include "stdafx.h"
-#include "AVL.h"
+#include "../CustomDataTypes/AVL.h"
 #include <cassert>
 
 int main()
