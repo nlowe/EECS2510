@@ -26,8 +26,7 @@
  */
 
 #pragma once
-#include "IPerformanceStatsTracker.h"
-#include "../BinarySearchTrees/BST.h"
+#include "BST.h"
 
 // A node in an AVL Tree. Basically, a Binary Tree Node
 // with an additional field for keeping track of the "balance factor"
@@ -36,42 +35,38 @@ struct AVLTreeNode : BinaryTreeNode
 	explicit AVLTreeNode(Word* payload) : BinaryTreeNode(payload) {}
 
 	char BalanceFactor = 0;
+
+
+	friend std::ostream& operator<<(std::ostream& os, const AVLTreeNode& obj)
+	{
+		return os
+			<< static_cast<const BinaryTreeNode&>(obj)
+			<< " BalanceFactor: " << obj.BalanceFactor;
+	}
 };
 
-class AVL : public IPerformanceStatsTracker
+class AVL : public BST
 {
 public:
 	AVL();
 	~AVL();
+
 	// Adds the word to the tree. If the word already exists, its occurrance count is incremeneted
 	// Returns:
 	//		A pointer to the word represented by the key
-	Word* add(std::string key);
-
-	// Finds the word in the tree with the specified tree. 
-	// Returns:
-	//		A pointer to the word represented by the specified key
-	//		A null pointer if the key does not exist in the tree
-	Word* get(std::string key);
-
-	// Prints all words and their occurrance count in alphabetical order to std::cout
-	void inOrderPrint() const { inOrderPrint(Root); }
-
-	// Returns true iff the tree is empty
-	bool isEmpty() const { return Root == nullptr; }
+	Word* add(std::string key) override;
 private:
-	AVLTreeNode* Root = nullptr;
+	// Perform tree rotations at the specified rotation candidate according to its balance factor and the specified delta
+	// This is required to keep the tree acceptably balanced.
+	static inline void doRotations(AVLTreeNode* lastRotationCandidate, AVLTreeNode*& nextAfterRotationCandidate, char delta);
 
-	static void updateBalanceFactors(std::string word, AVLTreeNode*& previous, AVLTreeNode* toInsert);
-	void doRotations(AVLTreeNode* F, AVLTreeNode* A, AVLTreeNode* B, char delta);
-	static void rotateLeftLeft(AVLTreeNode* F, AVLTreeNode* A, AVLTreeNode* B);
-	static void rotateRightRight(AVLTreeNode* F, AVLTreeNode* A, AVLTreeNode* B);
-
-
-	// Finds a node in the tree with the specified key
-	AVLTreeNode* find(std::string key);
-
-	// Recursively prints the subtree starting from the specified node in order
-	void inOrderPrint(AVLTreeNode* node) const;
+	// Performs a rotation to handle the Left-Left case at the specified rotation candidate
+	static inline void rotateLeftLeft(AVLTreeNode* lastRotationCandidate, AVLTreeNode*& nextAfterRotationCandidate);
+	// Performs a rotation to handle the Left-Right case at the specified rotation candidate
+	static inline void rotateLeftRight(AVLTreeNode* lastRotationCandidate, AVLTreeNode*& nextAfterRotationCandidate);
+	// Performs a rotation to handle the Right-Right case at the specified rotation candidate
+	static inline void rotateRightRight(AVLTreeNode* lastRotationCandidate, AVLTreeNode*& nextAfterRotationCandidate);
+	// Performs a rotation to handle the Right-Left case at the specified rotation candidate
+	static inline void rotateRightLeft(AVLTreeNode* lastRotationCandidate, AVLTreeNode*& nextAfterRotationCandidate);
 };
 

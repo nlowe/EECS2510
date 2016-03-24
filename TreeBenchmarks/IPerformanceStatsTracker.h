@@ -34,6 +34,8 @@
 class IPerformanceStatsTracker
 {
 public:
+	virtual ~IPerformanceStatsTracker() {}
+
 	// Get the total number of comparisons made internally during the
 	// lifetime of this object
 	size_t getComparisonCount() const { return comparisons; }

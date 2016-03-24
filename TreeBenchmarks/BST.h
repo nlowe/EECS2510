@@ -50,6 +50,15 @@ struct BinaryTreeNode
 		if (Left != nullptr) delete Left;
 		if (Right != nullptr) delete Right;
 	}
+
+
+	friend std::ostream& operator<<(std::ostream& os, const BinaryTreeNode& obj)
+	{
+		return os
+			<< "Payload: " << obj.Payload
+			<< " Left: " << obj.Left
+			<< " Right: " << obj.Right;
+	}
 };
 
 // A Tree that exhibits the Binary Search Tree Property :
@@ -68,7 +77,7 @@ public:
 	// Adds the word to the tree. If the word already exists, its occurrance count is incremeneted
 	// Returns:
 	//		A pointer to the word represented by the key
-	Word* add(std::string key);
+	virtual Word* add(std::string key);
 
 	// Finds the word in the tree with the specified tree. 
 	// Returns:
@@ -81,7 +90,7 @@ public:
 
 	// Returns true iff the tree is empty
 	bool isEmpty() const { return Root == nullptr; }
-private:
+protected:
 	// The node at the root of the tree
 	BinaryTreeNode* Root = nullptr;
 
