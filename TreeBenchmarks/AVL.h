@@ -27,6 +27,8 @@
 
 #pragma once
 #include "BST.h"
+#include <iostream>
+#include <iomanip>
 
 // A node in an AVL Tree. Basically, a Binary Tree Node
 // with an additional field for keeping track of the "balance factor"
@@ -55,7 +57,9 @@ public:
 	// Returns:
 	//		A pointer to the word represented by the key
 	Word* add(std::string key) override;
+
 private:
+
 	// Perform tree rotations at the specified rotation candidate according to its balance factor and the specified delta
 	// This is required to keep the tree acceptably balanced.
 	static inline void doRotations(AVLTreeNode* lastRotationCandidate, AVLTreeNode*& nextAfterRotationCandidate, char delta);

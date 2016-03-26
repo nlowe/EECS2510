@@ -29,6 +29,7 @@
 #include "Word.h"
 #include <string>
 #include "IPerformanceStatsTracker.h"
+#include <algorithm>
 
 // A node in a Binary Tree
 struct BinaryTreeNode
@@ -51,6 +52,7 @@ struct BinaryTreeNode
 		if (Right != nullptr) delete Right;
 	}
 
+	size_t height() const { return 1 + std::max(Left == nullptr ? 0 : Left->height(), Right == nullptr ? 0 : Right->height()); }
 
 	friend std::ostream& operator<<(std::ostream& os, const BinaryTreeNode& obj)
 	{
@@ -90,6 +92,8 @@ public:
 
 	// Returns true iff the tree is empty
 	bool isEmpty() const { return Root == nullptr; }
+
+	size_t height() const { return isEmpty() ? 0 : Root->height(); }
 protected:
 	// The node at the root of the tree
 	BinaryTreeNode* Root = nullptr;

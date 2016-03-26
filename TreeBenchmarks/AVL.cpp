@@ -1,6 +1,5 @@
 #include "stdafx.h"
 #include "AVL.h"
-#include <iostream>
 #include <cassert>
 
 AVL::AVL()
@@ -147,114 +146,123 @@ Word* AVL::add(std::string word)
 	return toInsert->Payload;
 }
 
-void AVL::doRotations(AVLTreeNode* lastRotationCandidate, AVLTreeNode*& nextAfterRotationCandidate, char delta)
+void AVL::doRotations(AVLTreeNode* A, AVLTreeNode*& B, char delta)
 {
-	if (delta == +1) // left imbalance.  LL or LR?
+	if (delta == 1) // left imbalance.  LL or LR?
 	{
-		if (nextAfterRotationCandidate->BalanceFactor == 1)
+		if (B->BalanceFactor == 1)
 		{
-			rotateLeftLeft(lastRotationCandidate, nextAfterRotationCandidate);
+			rotateLeftLeft(A, B);
 		}
 		else
 		{
-			rotateLeftRight(lastRotationCandidate, nextAfterRotationCandidate);
+			rotateLeftRight(A, B);
 		}
 	}
 	else // d=-1.  This is a right imbalance
 	{
-		if (nextAfterRotationCandidate->BalanceFactor == -1)
+		if (B->BalanceFactor == -1)
 		{
-			rotateRightRight(lastRotationCandidate, nextAfterRotationCandidate);
+			rotateRightRight(A, B);
 		}
 		else
 		{
-			rotateRightLeft(lastRotationCandidate, nextAfterRotationCandidate);
+			rotateRightLeft(A, B);
 		}
 	}
 }
 
-void AVL::rotateLeftLeft(AVLTreeNode* lastRotationCandidate, AVLTreeNode*& nextAfterRotationCandidate)
+void AVL::rotateLeftLeft(AVLTreeNode* A, AVLTreeNode*& B)
 {
 	// Change the child pointers at A and B to
 	// reflect the rotation. Adjust the BFs at A & B
-	// <<< LEFT FOR YOU TO WRITE (3-4 LOC) >>>
-	// See Schematic (1)
-	lastRotationCandidate->Left = nextAfterRotationCandidate->Right;
-	nextAfterRotationCandidate->Right = lastRotationCandidate;
-	lastRotationCandidate->BalanceFactor = nextAfterRotationCandidate->BalanceFactor = 0;
+	A->Left  = B->Right;
+	B->Right = A;
+	A->BalanceFactor = B->BalanceFactor = 0;
 }
 
-void AVL::rotateLeftRight(AVLTreeNode* lastRotationCandidate, AVLTreeNode*& nextAfterRotationCandidate)
+void AVL::rotateLeftRight(AVLTreeNode* A, AVLTreeNode*& B)
 {
 	// Adjust the child pointers of nodes A, B, & C
 	// to reflect the new post-rotation structure
-	// <<< LEFT FOR YOU TO WRITE, BUT HERE’S >>>
-	// <<< A HEAD START (4 LOC here)         >>>
-	auto C = static_cast<AVLTreeNode*>(nextAfterRotationCandidate->Right); // C is B's right child
+	auto C  = static_cast<AVLTreeNode*>(B->Right); // C is B's right child
 	auto CL = static_cast<AVLTreeNode*>(C->Left);  // CL and CR are C's left
 	auto CR = static_cast<AVLTreeNode*>(C->Right); //    and right children
-	// See Schematic (2) and (3)
 
-	lastRotationCandidate->Left = CR;
-	nextAfterRotationCandidate->Right = CL;
+	B->Right = CL;
+	A->Left = CR;
 
-	C->Left = nextAfterRotationCandidate;
-	C->Right = lastRotationCandidate;
+	C->Left = B;
+	C->Right = A;
+	/*
+	   A              A                     C
+	  /              /                   /    \
+	 B       ->     C         ->        B      A
+	  \            / \                   \    /
+	   C          B   CR                 CL  CR
+	  / \          \
+	CL   CR         CL
+
+	*/
 
 	switch (C->BalanceFactor)
 	{
 		// Set the new BF’s at A and B, based on the
 		// BF at C. Note: There are 3 sub-cases
-		// <<< LEFT FOR YOU TO WRITE (3 LOC/CASE) >>>
-		case  1: lastRotationCandidate->BalanceFactor = -1; nextAfterRotationCandidate->BalanceFactor = 0; break;
-		case  0: lastRotationCandidate->BalanceFactor = nextAfterRotationCandidate->BalanceFactor; break;
-		case -1: lastRotationCandidate->BalanceFactor = 0; nextAfterRotationCandidate->BalanceFactor = 1; break;
+		case  1: A->BalanceFactor = -1; B->BalanceFactor = 0; break;
+		case  0: A->BalanceFactor = B->BalanceFactor = 0; break;
+		case -1: A->BalanceFactor = 0; B->BalanceFactor = 1; break;
 		default: assert(false);
 	}
 
 	C->BalanceFactor = 0;
-	nextAfterRotationCandidate = C;
+	B = C;
 }
 
-void AVL::rotateRightRight(AVLTreeNode* lastRotationCandidate, AVLTreeNode*& nextAfterRotationCandidate)
+void AVL::rotateRightRight(AVLTreeNode* A, AVLTreeNode*& B)
 {
 	// Change the child pointers at A and B to
 	// reflect the rotation. Adjust the BFs at A & B
-	// <<< LEFT FOR YOU TO WRITE (3-4 LOC) >>>
-	// See Schematic (1)
-	lastRotationCandidate->Right = nextAfterRotationCandidate->Left;
-	nextAfterRotationCandidate->Left = lastRotationCandidate;
-	lastRotationCandidate->BalanceFactor = nextAfterRotationCandidate->BalanceFactor = 0;
+	A->Right = B->Left;
+	B->Left  = A;
+	A->BalanceFactor = B->BalanceFactor = 0;
 }
 
-void AVL::rotateRightLeft(AVLTreeNode* lastRotationCandidate, AVLTreeNode*& nextAfterRotationCandidate)
+void AVL::rotateRightLeft(AVLTreeNode* A, AVLTreeNode*& B)
 {
 	// Adjust the child pointers of nodes A, B, & C
 	// to reflect the new post-rotation structure
-	// <<< LEFT FOR YOU TO WRITE, BUT HERE’S >>>
-	// <<< A HEAD START (4 LOC here)         >>>
-	auto C = static_cast<AVLTreeNode*>(nextAfterRotationCandidate->Left); // C is B's right child
+	auto C  = static_cast<AVLTreeNode*>(B->Left); // C is B's left child
 	auto CL = static_cast<AVLTreeNode*>(C->Left); // CL and CR are C's left
-	auto CR = static_cast<AVLTreeNode*>(C->Right); //    and right children
-	// See Schematic (2) and (3)
+	auto CR = static_cast<AVLTreeNode*>(C->Right);//    and right children
 
-	lastRotationCandidate->Right = CL;
-	nextAfterRotationCandidate->Left = CR;
+	/*
+			A              A                      C
+			 \              \                   /   \
+			  B       ->     C         ->      A     B
+			 /              / \                 \   /
+			C             CL   B                CL CR
+		   / \                /
+		 CL   CR             CR
 
-	C->Right = nextAfterRotationCandidate;
-	C->Left = lastRotationCandidate;
+	 */
+
+	A->Right = CL;
+	B->Left  = CR;
+
+	C->Right = B;
+	C->Left  = A;
 
 	switch (C->BalanceFactor)
 	{
 		// Set the new BF’s at A and B, based on the
 		// BF at C. Note: There are 3 sub-cases
-		// <<< LEFT FOR YOU TO WRITE (3 LOC/CASE) >>>
-	case  1: lastRotationCandidate->BalanceFactor = 1; nextAfterRotationCandidate->BalanceFactor = 0; break;
-	case  0: lastRotationCandidate->BalanceFactor = nextAfterRotationCandidate->BalanceFactor; break;
-	case -1: lastRotationCandidate->BalanceFactor = 0; nextAfterRotationCandidate->BalanceFactor = -1; break;
-	default: assert(false);
+		case  1: A->BalanceFactor = 0; B->BalanceFactor = -1; break;
+		case  0: A->BalanceFactor = B->BalanceFactor = 0; break;
+		case -1: A->BalanceFactor = 1; B->BalanceFactor = 0; break;
+		default: assert(false);
 	}
 
 	C->BalanceFactor = 0;
-	nextAfterRotationCandidate = C;
+	B = C;
 }

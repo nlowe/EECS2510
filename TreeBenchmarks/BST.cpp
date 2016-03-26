@@ -153,6 +153,6 @@ void BST::inOrderPrint(BinaryTreeNode* node) const
 	if (node == nullptr) return;
 
 	inOrderPrint(node->Left);
-	std::cout << node->Payload->key << " " << node->Payload->count << std::endl;
+	std::cout << *node << std::endl;
 	inOrderPrint(node->Right);
 }
