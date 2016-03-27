@@ -39,6 +39,9 @@
     <ClInclude Include="AVL.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="RBT.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -51,6 +54,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="AVL.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="RBT.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

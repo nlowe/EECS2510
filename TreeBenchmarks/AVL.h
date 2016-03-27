@@ -27,8 +27,6 @@
 
 #pragma once
 #include "BST.h"
-#include <iostream>
-#include <iomanip>
 
 // A node in an AVL Tree. Basically, a Binary Tree Node
 // with an additional field for keeping track of the "balance factor"
@@ -37,7 +35,6 @@ struct AVLTreeNode : BinaryTreeNode
 	explicit AVLTreeNode(Word* payload) : BinaryTreeNode(payload) {}
 
 	char BalanceFactor = 0;
-
 
 	friend std::ostream& operator<<(std::ostream& os, const AVLTreeNode& obj)
 	{

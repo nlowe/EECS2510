@@ -6,11 +6,13 @@
 #include <iostream>
 #include <vector>
 #include <ctime>
+#include "RBT.h"
 
 int main()
 {
 	BST bstree;
 	AVL tree;
+	RBT rbt;
 
 	srand(unsigned(time(nullptr)));
 	auto numbers = std::vector<std::string>();
@@ -26,9 +28,10 @@ int main()
 	{
 		tree.add(*it);
 		bstree.add(*it);
+		rbt.add(*it);
 	}
 
-	std::cout << "AVL Tree Height: " << tree.height() << ", BST Height: " << bstree.height() << std::endl;
+	std::cout << "AVL Tree Height: " << tree.height() << ", RBT Height: " << rbt.height() << ", BST Height: " << bstree.height() << std::endl;
 
     return 0;
 }
