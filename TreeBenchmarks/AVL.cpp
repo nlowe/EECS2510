@@ -42,8 +42,8 @@ Word* AVL::add(std::string word)
 		if (branchComparisonResult == 0)
 		{
 			// The word we're inserting is already in the tree
-			candidate->Payload->count++;
-			return candidate->Payload;
+			P->Payload->count++;
+			return P->Payload;
 		}
 
 		// If this node's balance factor is already +/- 1 it may go to +/- 2 after the insertion
