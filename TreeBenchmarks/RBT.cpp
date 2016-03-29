@@ -6,6 +6,7 @@ RBT::RBT()
 {
 	leafNodes = new RedBlackNode(nullptr);
 	leafNodes->Color = BLACK;
+	leafNodes->Left = leafNodes->Right = leafNodes->Parent = leafNodes;
 }
 
 
@@ -21,6 +22,7 @@ Word* RBT::add(std::string word)
 	{
 		this->referenceChanges++;
 		Root = new RedBlackNode(new Word(word));
+		(static_cast<RedBlackNode*>(Root))->Color = BLACK;
 		(static_cast<RedBlackNode*>(Root))->Parent = leafNodes;
 		Root->Left = Root->Right = leafNodes;
 		return Root->Payload;
@@ -29,7 +31,6 @@ Word* RBT::add(std::string word)
 	// Otherwise, we need to find where to put it
 	RedBlackNode* x = static_cast<RedBlackNode*>(Root);
 	RedBlackNode* y = nullptr;
-	char delta = 0;
 
 	int branchComparisonResult;
 
@@ -41,8 +42,8 @@ Word* RBT::add(std::string word)
 		if (branchComparisonResult == 0)
 		{
 			// The word we're inserting is already in the tree
-			y->Payload->count++;
-			return y->Payload;
+			x->Payload->count++;
+			return x->Payload;
 		}
 
 		// Remember where we used to be
@@ -139,22 +140,24 @@ void RBT::rotateLeft(RedBlackNode* x)
 	if(y->Left != leafNodes)
 	{
 		(static_cast<RedBlackNode*>(y->Left))->Parent = x;
-		y->Parent = x->Parent;
-		if(x->Parent == leafNodes)
-		{
-			Root = y;
-		}
-		else if(x == x->Parent->Left)
-		{
-			x->Parent->Left = y;
-		}
-		else
-		{
-			x->Parent->Right = y;
-			y->Left = x;
-			x->Parent = y;
-		}
 	}
+
+	y->Parent = x->Parent;
+	if (x->Parent == leafNodes)
+	{
+		Root = y;
+	}
+	else if (x == x->Parent->Left)
+	{
+		x->Parent->Left = y;
+	}
+	else
+	{
+		x->Parent->Right = y;
+	}
+
+	y->Left = x;
+	x->Parent = y;
 }
 
 void RBT::rotateRight(RedBlackNode* x)
@@ -165,20 +168,22 @@ void RBT::rotateRight(RedBlackNode* x)
 	if (y->Right != leafNodes)
 	{
 		(static_cast<RedBlackNode*>(y->Right))->Parent = x;
-		y->Parent = x->Parent;
-		if (x->Parent == leafNodes)
-		{
-			Root = y;
-		}
-		else if (x == x->Parent->Right)
-		{
-			x->Parent->Right = y;
-		}
-		else
-		{
-			x->Parent->Left = y;
-			y->Right = x;
-			x->Parent = y;
-		}
 	}
+	
+	y->Parent = x->Parent;
+	if (x->Parent == leafNodes)
+	{
+		Root = y;
+	}
+	else if (x == x->Parent->Right)
+	{
+		x->Parent->Right = y;
+	}
+	else
+	{
+		x->Parent->Left = y;
+	}
+
+	y->Right = x;
+	x->Parent = y;
 }

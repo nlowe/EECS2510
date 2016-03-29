@@ -41,8 +41,21 @@ struct RedBlackNode : BinaryTreeNode
 {
 	explicit RedBlackNode(Word* payload) : BinaryTreeNode(payload) {}
 
+	~RedBlackNode()
+	{
+		if (Payload != nullptr) delete Payload;
+		if (Left != this && Left != nullptr && Left->Left != Left) delete Left;
+		if (Right != this && Right != nullptr && Right->Right != Right) delete Right;
+
+		Payload = nullptr;
+		Parent = nullptr;
+		Left = Right = nullptr;
+	}
+
 	RedBlackNode* Parent = nullptr;
 	NodeColor Color = RED;
+
+	size_t height() const override { return 1 + std::max(Left == this ? 0 : Left->height(), Right == this ? 0 : Right->height()); }
 };
 
 class RBT : public BST

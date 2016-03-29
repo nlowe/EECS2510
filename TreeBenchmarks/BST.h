@@ -45,14 +45,14 @@ struct BinaryTreeNode
 	// Construct a binary tree node with the specified Word as a payload
 	explicit BinaryTreeNode(Word* payload) : Payload(payload){}
 
-	~BinaryTreeNode()
+	virtual ~BinaryTreeNode()
 	{
-		delete Payload;
+		if (Payload != nullptr) delete Payload;
 		if (Left != nullptr) delete Left;
 		if (Right != nullptr) delete Right;
 	}
 
-	size_t height() const { return 1 + std::max(Left == nullptr ? 0 : Left->height(), Right == nullptr ? 0 : Right->height()); }
+	virtual size_t height() const { return 1 + std::max(Left == nullptr ? 0 : Left->height(), Right == nullptr ? 0 : Right->height()); }
 
 	friend std::ostream& operator<<(std::ostream& os, const BinaryTreeNode& obj)
 	{
