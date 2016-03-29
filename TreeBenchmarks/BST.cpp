@@ -37,7 +37,7 @@ BST::BST()
 BST::~BST()
 {
 	// Free the root pointer. This will also free all child nodes
-	delete Root;
+	if (Root != nullptr) delete Root;
 }
 
 // Adds the word to the tree. If the word already exists, its occurrance count is incremeneted

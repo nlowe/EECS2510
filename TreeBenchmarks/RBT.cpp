@@ -4,7 +4,7 @@
 
 RBT::RBT()
 {
-	leafNodes = new RedBlackNode(nullptr);
+	leafNodes = new RedBlackNode(new Word(""));
 	leafNodes->Color = BLACK;
 	leafNodes->Left = leafNodes->Right = leafNodes->Parent = leafNodes;
 }
@@ -12,7 +12,13 @@ RBT::RBT()
 
 RBT::~RBT()
 {
+	// We have to delete the nodes ourselves first so the leaf supernode can be properly free'd
+	if (Root != nullptr) delete Root;
 	delete leafNodes;
+
+	// We have to set the root to a null pointer so the base destructor doesn't try to double-free the nodes
+	Root = nullptr;
+	leafNodes = nullptr;
 }
 
 Word* RBT::add(std::string word)
