@@ -53,7 +53,7 @@ struct RedBlackNode : BinaryTreeNode
 	RedBlackNode* Parent = nullptr;
 	NodeColor Color = RED;
 
-	size_t height() const override { return 1 + std::max(Left == this ? 0 : Left->height(), Right == this ? 0 : Right->height()); }
+	size_t height() const override { return 1 + std::max(Left == this ? -1 : Left->height(), Right == this ? -1 : Right->height()); }
 
 private:
 	static bool isMasterLeaf(RedBlackNode* n)
