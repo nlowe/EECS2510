@@ -73,7 +73,10 @@ public:
 	// Returns:
 	//		A pointer to the word represented by the key
 	Word* add(std::string key) override;
+
+	size_t getRecolorCount() const { return recolorCount; }
 private:
+	size_t recolorCount = 0;
 	RedBlackNode* leafNodes;
 
 	void fixup(RedBlackNode* z);

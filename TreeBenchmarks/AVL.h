@@ -55,19 +55,22 @@ public:
 	//		A pointer to the word represented by the key
 	Word* add(std::string key) override;
 
+	size_t getBalanceFactorChangeCount() const { return balanceFactorChanges;  }
+
 private:
+	size_t balanceFactorChanges = 0;
 
 	// Perform tree rotations at the specified rotation candidate according to its balance factor and the specified delta
 	// This is required to keep the tree acceptably balanced.
-	static inline void doRotations(AVLTreeNode* lastRotationCandidate, AVLTreeNode*& nextAfterRotationCandidate, char delta);
+	inline void doRotations(AVLTreeNode* lastRotationCandidate, AVLTreeNode*& nextAfterRotationCandidate, char delta);
 
 	// Performs a rotation to handle the Left-Left case at the specified rotation candidate
-	static inline void rotateLeftLeft(AVLTreeNode* lastRotationCandidate, AVLTreeNode*& nextAfterRotationCandidate);
+	inline void rotateLeftLeft(AVLTreeNode* lastRotationCandidate, AVLTreeNode*& nextAfterRotationCandidate);
 	// Performs a rotation to handle the Left-Right case at the specified rotation candidate
-	static inline void rotateLeftRight(AVLTreeNode* lastRotationCandidate, AVLTreeNode*& nextAfterRotationCandidate);
+	inline void rotateLeftRight(AVLTreeNode* lastRotationCandidate, AVLTreeNode*& nextAfterRotationCandidate);
 	// Performs a rotation to handle the Right-Right case at the specified rotation candidate
-	static inline void rotateRightRight(AVLTreeNode* lastRotationCandidate, AVLTreeNode*& nextAfterRotationCandidate);
+	inline void rotateRightRight(AVLTreeNode* lastRotationCandidate, AVLTreeNode*& nextAfterRotationCandidate);
 	// Performs a rotation to handle the Right-Left case at the specified rotation candidate
-	static inline void rotateRightLeft(AVLTreeNode* lastRotationCandidate, AVLTreeNode*& nextAfterRotationCandidate);
+	inline void rotateRightLeft(AVLTreeNode* lastRotationCandidate, AVLTreeNode*& nextAfterRotationCandidate);
 };
 

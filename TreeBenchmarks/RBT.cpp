@@ -4,6 +4,8 @@
 
 RBT::RBT()
 {
+	this->recolorCount++;
+	this->referenceChanges += 3;
 	leafNodes = new RedBlackNode(new Word(""));
 	leafNodes->Color = BLACK;
 	leafNodes->Left = leafNodes->Right = leafNodes->Parent = leafNodes;
@@ -26,7 +28,8 @@ Word* RBT::add(std::string word)
 	// The tree is empty, just update the root pointer
 	if (isEmpty())
 	{
-		this->referenceChanges++;
+		this->referenceChanges += 4;
+		this->recolorCount++;
 		Root = new RedBlackNode(new Word(word));
 		(static_cast<RedBlackNode*>(Root))->Color = BLACK;
 		(static_cast<RedBlackNode*>(Root))->Parent = leafNodes;
@@ -44,6 +47,7 @@ Word* RBT::add(std::string word)
 	while (x != leafNodes)
 	{
 		branchComparisonResult = word.compare(x->Payload->key);
+		this->comparisons++;
 
 		if (branchComparisonResult == 0)
 		{
@@ -59,11 +63,11 @@ Word* RBT::add(std::string word)
 
 	// We didn't find the node already, so we have to insert a new one
 	auto toInsert = new RedBlackNode(new Word(word));
+	this->referenceChanges += 4;
 	toInsert->Parent = y;
 	toInsert->Left = toInsert->Right = leafNodes;
 
 	// Graft the new leaf node into the tree
-	this->referenceChanges++;
 	if (branchComparisonResult < 0)
 	{
 		y->Left = toInsert;
@@ -88,6 +92,7 @@ void RBT::fixup(RedBlackNode* z)
 			if (y->Color == RED)
 			{
 				// Case 1, re-color only
+				this->recolorCount += 3;
 				z->Parent->Color = BLACK;
 				y->Color = BLACK;
 				z->Parent->Parent->Color = RED;
@@ -102,6 +107,7 @@ void RBT::fixup(RedBlackNode* z)
 					rotateLeft(z);
 				}
 				// Case 3
+				this->recolorCount += 3;
 				z->Parent->Color = BLACK;
 				z->Parent->Parent->Color = RED;
 				rotateRight(z->Parent->Parent);
@@ -114,6 +120,7 @@ void RBT::fixup(RedBlackNode* z)
 			if (y->Color == RED)
 			{
 				// Case 1, re-color only
+				this->recolorCount += 3;
 				z->Parent->Color = BLACK;
 				y->Color = BLACK;
 				z->Parent->Parent->Color = RED;
@@ -128,6 +135,7 @@ void RBT::fixup(RedBlackNode* z)
 					rotateRight(z);
 				}
 				// Case 3
+				this->recolorCount += 2;
 				z->Parent->Color = BLACK;
 				z->Parent->Parent->Color = RED;
 				rotateLeft(z->Parent->Parent);
@@ -142,12 +150,15 @@ void RBT::rotateLeft(RedBlackNode* x)
 {
 	auto y = static_cast<RedBlackNode*>(x->Right);
 	x->Right = y->Left;
+	this->referenceChanges++;
 
 	if(y->Left != leafNodes)
 	{
 		(static_cast<RedBlackNode*>(y->Left))->Parent = x;
+		this->referenceChanges++;
 	}
 
+	this->referenceChanges += 4;
 	y->Parent = x->Parent;
 	if (x->Parent == leafNodes)
 	{
@@ -170,12 +181,15 @@ void RBT::rotateRight(RedBlackNode* x)
 {
 	auto y = static_cast<RedBlackNode*>(x->Left);
 	x->Left = y->Right;
+	this->referenceChanges++;
 
 	if (y->Right != leafNodes)
 	{
+		this->referenceChanges++;
 		(static_cast<RedBlackNode*>(y->Right))->Parent = x;
 	}
 	
+	this->referenceChanges += 4;
 	y->Parent = x->Parent;
 	if (x->Parent == leafNodes)
 	{

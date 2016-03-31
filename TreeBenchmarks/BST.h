@@ -27,7 +27,6 @@
 
 #pragma once
 #include "Word.h"
-#include <string>
 #include "IPerformanceStatsTracker.h"
 #include <algorithm>
 

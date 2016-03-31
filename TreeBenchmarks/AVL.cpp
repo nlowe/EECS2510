@@ -38,6 +38,7 @@ Word* AVL::add(std::string word)
 	while (P != nullptr)
 	{
 		branchComparisonResult = word.compare(P->Payload->key);
+		this->comparisons++;
 
 		if (branchComparisonResult == 0)
 		{
@@ -75,6 +76,7 @@ Word* AVL::add(std::string word)
 
 	// Figure out if we took the left or right branch after the last node with
 	// a +/- 1 balance factor prior to the insert
+	this->comparisons++;
 	if (word.compare(lastRotationCandidate->Payload->key) < 0)
 	{
 		delta = 1;
@@ -93,6 +95,8 @@ Word* AVL::add(std::string word)
 	// Update balance factors, moving pointers along the way
 	while (P != toInsert)
 	{
+		this->comparisons++;
+		this->balanceFactorChanges++;
 		if (word.compare(P->Payload->key) > 0)
 		{
 			P->BalanceFactor = -1;
@@ -108,6 +112,7 @@ Word* AVL::add(std::string word)
 	if (lastRotationCandidate->BalanceFactor == 0)
 	{
 		// Tree was perfectly balanced
+		this->balanceFactorChanges++;
 		lastRotationCandidate->BalanceFactor = delta;
 		return toInsert->Payload;
 	}
@@ -115,6 +120,7 @@ Word* AVL::add(std::string word)
 	if (lastRotationCandidate->BalanceFactor == -delta)
 	{
 		// Tree was out of balance, but is now balanced
+		this->balanceFactorChanges++;
 		lastRotationCandidate->BalanceFactor = 0;
 		return toInsert->Payload;
 	}
@@ -123,6 +129,7 @@ Word* AVL::add(std::string word)
 	doRotations(lastRotationCandidate, nextAfterRotationCandidate, delta);
 
 	// did we rebalance the root?
+	this->referenceChanges++;
 	if (lastRotationCandidateParent == nullptr)
 	{
 		Root = nextAfterRotationCandidate;
@@ -176,6 +183,8 @@ void AVL::rotateLeftLeft(AVLTreeNode* A, AVLTreeNode*& B)
 {
 	// Change the child pointers at A and B to
 	// reflect the rotation. Adjust the BFs at A & B
+	this->referenceChanges += 2;
+	this->balanceFactorChanges += 2;
 	A->Left  = B->Right;
 	B->Right = A;
 	A->BalanceFactor = B->BalanceFactor = 0;
@@ -189,6 +198,7 @@ void AVL::rotateLeftRight(AVLTreeNode* A, AVLTreeNode*& B)
 	auto CL = static_cast<AVLTreeNode*>(C->Left);  // CL and CR are C's left
 	auto CR = static_cast<AVLTreeNode*>(C->Right); //    and right children
 
+	this->referenceChanges += 4;
 	B->Right = CL;
 	A->Left = CR;
 
@@ -205,6 +215,7 @@ void AVL::rotateLeftRight(AVLTreeNode* A, AVLTreeNode*& B)
 
 	*/
 
+	this->balanceFactorChanges += 3;
 	switch (C->BalanceFactor)
 	{
 		// Set the new BF’s at A and B, based on the
@@ -223,6 +234,8 @@ void AVL::rotateRightRight(AVLTreeNode* A, AVLTreeNode*& B)
 {
 	// Change the child pointers at A and B to
 	// reflect the rotation. Adjust the BFs at A & B
+	this->referenceChanges += 2;
+	this->balanceFactorChanges += 2;
 	A->Right = B->Left;
 	B->Left  = A;
 	A->BalanceFactor = B->BalanceFactor = 0;
@@ -247,12 +260,14 @@ void AVL::rotateRightLeft(AVLTreeNode* A, AVLTreeNode*& B)
 
 	 */
 
+	this->referenceChanges += 4;
 	A->Right = CL;
 	B->Left  = CR;
 
 	C->Right = B;
 	C->Left  = A;
 
+	this->balanceFactorChanges += 3;
 	switch (C->BalanceFactor)
 	{
 		// Set the new BF’s at A and B, based on the
