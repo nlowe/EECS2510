@@ -59,10 +59,7 @@ struct BinaryTreeNode
 
 	friend std::ostream& operator<<(std::ostream& os, const BinaryTreeNode& obj)
 	{
-		return os
-			<< "Payload: " << obj.Payload
-			<< " Left: " << obj.Left
-			<< " Right: " << obj.Right;
+		return os << "Payload: " << *obj.Payload;
 	}
 
 };
@@ -108,5 +105,5 @@ protected:
 	BinaryTreeNode* find(std::string key);
 
 	// Recursively prints the subtree starting from the specified node in order
-	void inOrderPrint(BinaryTreeNode* node) const;
+	virtual void inOrderPrint(BinaryTreeNode* node) const;
 };

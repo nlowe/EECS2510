@@ -13,9 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-  </ItemGroup>
-  <ItemGroup>
-    <Text Include="ReadMe.txt" />
+    <Filter Include="Test Files">
+      <UniqueIdentifier>{1b8a2833-2919-45c9-beb6-bd570e15f4e8}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -62,5 +62,34 @@
     <ClCompile Include="RBT.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="Test Files\Empty.txt">
+      <Filter>Test Files</Filter>
+    </Text>
+    <Text Include="Test Files\Hamlet.txt">
+      <Filter>Test Files</Filter>
+    </Text>
+    <Text Include="Test Files\Hamlet-Scene-1.txt">
+      <Filter>Test Files</Filter>
+    </Text>
+    <Text Include="Test Files\Hamlet-Small.txt">
+      <Filter>Test Files</Filter>
+    </Text>
+    <Text Include="Test Files\King James Bible.txt">
+      <Filter>Test Files</Filter>
+    </Text>
+    <Text Include="Test Files\Outlander - Diana Gabaldon.txt">
+      <Filter>Test Files</Filter>
+    </Text>
+    <Text Include="Test Files\Shakespeare.txt">
+      <Filter>Test Files</Filter>
+    </Text>
+    <Text Include="Test Files\To Kill a Mockingbird - Harper Lee.txt">
+      <Filter>Test Files</Filter>
+    </Text>
+    <Text Include="Test Files\War and Peace.txt">
+      <Filter>Test Files</Filter>
+    </Text>
   </ItemGroup>
 </Project>

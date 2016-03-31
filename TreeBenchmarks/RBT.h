@@ -57,7 +57,6 @@ struct RedBlackNode : BinaryTreeNode
 	size_t totalHeight() const override { return isMasterLeaf() ? 0 : this->BinaryTreeNode::totalHeight(); }
 	size_t payloadSum() const override { return isMasterLeaf() ? 0 : this->BinaryTreeNode::payloadSum(); }
 
-private:
 	bool isMasterLeaf() const
 	{
 		return Left == Right && Left == Parent && Color == BLACK;
@@ -84,5 +83,7 @@ private:
 	void fixup(RedBlackNode* z);
 	void rotateLeft(RedBlackNode* x);
 	void rotateRight(RedBlackNode* x);
+
+	void inOrderPrint(BinaryTreeNode* node) const override;
 };
 

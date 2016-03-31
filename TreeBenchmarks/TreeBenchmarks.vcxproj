@@ -142,9 +142,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <Text Include="ReadMe.txt" />
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="AVL.h" />
     <ClInclude Include="BST.h" />
     <ClInclude Include="IPerformanceStatsTracker.h" />
@@ -166,6 +163,17 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="TreeBenchmarks.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="Test Files\Empty.txt" />
+    <Text Include="Test Files\Hamlet-Scene-1.txt" />
+    <Text Include="Test Files\Hamlet-Small.txt" />
+    <Text Include="Test Files\Hamlet.txt" />
+    <Text Include="Test Files\King James Bible.txt" />
+    <Text Include="Test Files\Outlander - Diana Gabaldon.txt" />
+    <Text Include="Test Files\Shakespeare.txt" />
+    <Text Include="Test Files\To Kill a Mockingbird - Harper Lee.txt" />
+    <Text Include="Test Files\War and Peace.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

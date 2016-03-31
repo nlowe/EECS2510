@@ -45,8 +45,6 @@ struct Word
 
 	friend std::ostream& operator<<(std::ostream& os, const Word& obj)
 	{
-		return os
-			<< "key: " << obj.key
-			<< " count: " << obj.count;
+		return os << "key: " << obj.key << ", count: " << obj.count;
 	}
 };

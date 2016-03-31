@@ -35,13 +35,6 @@ struct AVLTreeNode : BinaryTreeNode
 	explicit AVLTreeNode(Word* payload) : BinaryTreeNode(payload) {}
 
 	char BalanceFactor = 0;
-
-	friend std::ostream& operator<<(std::ostream& os, const AVLTreeNode& obj)
-	{
-		return os
-			<< static_cast<const BinaryTreeNode&>(obj)
-			<< " BalanceFactor: " << obj.BalanceFactor;
-	}
 };
 
 class AVL : public BST

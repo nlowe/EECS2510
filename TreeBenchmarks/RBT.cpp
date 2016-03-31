@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "RBT.h"
+#include <iostream>
 
 
 RBT::RBT()
@@ -206,4 +207,11 @@ void RBT::rotateRight(RedBlackNode* x)
 
 	y->Right = x;
 	x->Parent = y;
+}
+
+void RBT::inOrderPrint(BinaryTreeNode* node) const
+{
+	if ((static_cast<RedBlackNode*>(node))->isMasterLeaf()) return;
+
+	this->BST::inOrderPrint(node);
 }

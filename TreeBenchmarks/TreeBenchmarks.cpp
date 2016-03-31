@@ -132,6 +132,16 @@ int runFileBenchmarks(Options options)
 		cout << "BST: Height=" << binarySearchTree->height() << ", DistinctWords=" << binarySearchTree->totalNodes() << ", TotalWords=" << binarySearchTree->totalWords() << ", Time=" << bstTime << "ms, Comparisons=" << binarySearchTree->getComparisonCount() << ", ReferenceChanges=" << binarySearchTree->getReferenceChanges() << endl;
 		cout << "AVL: Height=" << avlTree->height() << ", DistinctWords=" << avlTree->totalNodes() << ", TotalWords=" << avlTree->totalWords() << ", Time=" << avlTime << "ms, Comparisons=" << avlTree->getComparisonCount() << ", ReferenceChanges=" << avlTree->getReferenceChanges() << ", BalanceFactorChanges=" << avlTree->getBalanceFactorChangeCount() << endl;
 		cout << "RBT: Height=" << redBlackTree->height() << ", DistinctWords=" << redBlackTree->totalNodes() << ", TotalWords=" << redBlackTree->totalWords() << ", Time=" << rbtTime << "ms, Comparisons=" << redBlackTree->getComparisonCount() << ", ReferenceChanges=" << redBlackTree->getReferenceChanges() << ", ReColors=" << redBlackTree->getRecolorCount() << endl;
+
+		cout << "BST In Order:" << endl;
+		binarySearchTree->inOrderPrint();
+		cout << "--------------------------" << endl << endl;
+		cout << "AVL In Order:" << endl;
+		avlTree->inOrderPrint();
+		cout << "--------------------------" << endl << endl;
+		cout << "RBT In Order:" << endl;
+		redBlackTree->BST::inOrderPrint();
+		cout << "--------------------------" << endl;
 	}
 
 	delete binarySearchTree;
@@ -168,6 +178,16 @@ int runRandomBenchmarks(Options options)
 		cout << "BST: Height=" << binarySearchTree->height() << ", DistinctWords=" << binarySearchTree->totalNodes() << ", TotalWords=" << binarySearchTree->totalWords() << ", Time=" << bstTime << "ms, Comparisons=" << binarySearchTree->getComparisonCount() << ", ReferenceChanges=" << binarySearchTree->getReferenceChanges() << endl;
 		cout << "AVL: Height=" << avlTree->height() << ", DistinctWords=" << avlTree->totalNodes() << ", TotalWords=" << avlTree->totalWords() << ", Time=" << avlTime << "ms, Comparisons=" << avlTree->getComparisonCount() << ", ReferenceChanges=" << avlTree->getReferenceChanges() << ", BalanceFactorChanges=" << avlTree->getBalanceFactorChangeCount() << endl;
 		cout << "RBT: Height=" << redBlackTree->height() << ", DistinctWords=" << redBlackTree->totalNodes() << ", TotalWords=" << redBlackTree->totalWords() << ", Time=" << rbtTime << "ms, Comparisons=" << redBlackTree->getComparisonCount() << ", ReferenceChanges=" << redBlackTree->getReferenceChanges() << ", ReColors=" << redBlackTree->getRecolorCount() << endl;
+
+		cout << "BST In Order:" << endl;
+		binarySearchTree->inOrderPrint();
+		cout << "--------------------------" << endl << endl;
+		cout << "AVL In Order:" << endl;
+		avlTree->inOrderPrint();
+		cout << "--------------------------" << endl << endl;
+		cout << "RBT In Order:" << endl;
+		redBlackTree->BST::inOrderPrint();
+		cout << "--------------------------" << endl;
 	}
 
 	delete binarySearchTree;
