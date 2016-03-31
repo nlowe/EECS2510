@@ -53,6 +53,10 @@ struct BinaryTreeNode
 
 	virtual size_t height() const { return 1 + std::max(Left == nullptr ? 0 : Left->height(), Right == nullptr ? 0 : Right->height()); }
 
+	virtual size_t totalHeight() const { return 1 + (Left == nullptr ? 0 : Left->totalHeight()) + (Right == nullptr ? 0 : Right->totalHeight()); }
+
+	virtual size_t payloadSum() const { return Payload->count + (Left == nullptr ? 0 : Left->payloadSum()) + (Right == nullptr ? 0 : Right->payloadSum()); }
+
 	friend std::ostream& operator<<(std::ostream& os, const BinaryTreeNode& obj)
 	{
 		return os
@@ -60,6 +64,7 @@ struct BinaryTreeNode
 			<< " Left: " << obj.Left
 			<< " Right: " << obj.Right;
 	}
+
 };
 
 // A Tree that exhibits the Binary Search Tree Property :
@@ -93,6 +98,8 @@ public:
 	bool isEmpty() const { return Root == nullptr; }
 
 	size_t height() const { return isEmpty() ? 0 : Root->height(); }
+	size_t totalWords() const { return isEmpty() ? 0 : Root->payloadSum(); }
+	size_t totalNodes() const { return isEmpty() ? 0 : Root->totalHeight(); }
 protected:
 	// The node at the root of the tree
 	BinaryTreeNode* Root = nullptr;

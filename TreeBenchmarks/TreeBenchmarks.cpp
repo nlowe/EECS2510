@@ -118,20 +118,20 @@ int runFileBenchmarks(Options options)
 	{
 		if (!options.noHeaders)
 		{
-			cout << "File,Overhead,BTime,BHeight,BComp,BRef,ATime,AHeight,AComp,ARef,ABal,RTime,RHeight,RComp,RRef,RRec" << endl;
+			cout << "File,Overhead,BTime,BHeight,BDist,BTotal,BComp,BRef,ATime,AHeight,ADist,ATotal,AComp,ARef,ABal,RTime,RHeight,RDist,RTotal,RComp,RRef,RRec" << endl;
 		}
 		cout << '"' << path << "\"," << overhead << ',';
-		cout << bstTime << ',' << binarySearchTree->height() << ',' << binarySearchTree->getComparisonCount() << ',' << binarySearchTree->getReferenceChanges() << ',';
-		cout << avlTime << ',' << avlTree->height() << ',' << avlTree->getComparisonCount() << ',' << avlTree->getReferenceChanges() << ',' << avlTree->getBalanceFactorChangeCount() << ',';
-		cout << rbtTime << ',' << redBlackTree->height() << ',' << redBlackTree->getComparisonCount() << ',' << redBlackTree->getReferenceChanges() << ',' << redBlackTree->getRecolorCount() << endl;
+		cout << bstTime << ',' << binarySearchTree->height() << ',' << binarySearchTree->totalNodes() << ',' << binarySearchTree->totalWords() << ',' << binarySearchTree->getComparisonCount() << ',' << binarySearchTree->getReferenceChanges() << ',';
+		cout << avlTime << ',' << avlTree->height() << ',' << avlTree->totalNodes() << ',' << avlTree->totalWords() << ',' << avlTree->getComparisonCount() << ',' << avlTree->getReferenceChanges() << ',' << avlTree->getBalanceFactorChangeCount() << ',';
+		cout << rbtTime << ',' << redBlackTree->height() << ',' << redBlackTree->totalNodes() << ',' << redBlackTree->totalWords() << ',' << redBlackTree->getComparisonCount() << ',' << redBlackTree->getReferenceChanges() << ',' << redBlackTree->getRecolorCount() << endl;
 	}
 	else
 	{
 		cout << "Total Runtime for file \"" << path << "\": " << (overhead + bstTime + avlTime + rbtTime) << "ms" << endl;
 		cout << "Overhead: " << overhead << "ms" << endl;
-		cout << "BST: Height=" << binarySearchTree->height() << ", Time=" << bstTime << "ms, Comparisons=" << binarySearchTree->getComparisonCount() << ", ReferenceChanges=" << binarySearchTree->getReferenceChanges() << endl;
-		cout << "AVL: Height=" << avlTree->height() << ", Time=" << avlTime << "ms, Comparisons=" << avlTree->getComparisonCount() << ", ReferenceChanges=" << avlTree->getReferenceChanges() << ", BalanceFactorChanges=" << avlTree->getBalanceFactorChangeCount() << endl;
-		cout << "RBT: Height=" << redBlackTree->height() << ", Time=" << rbtTime << "ms, Comparisons=" << redBlackTree->getComparisonCount() << ", ReferenceChanges=" << redBlackTree->getReferenceChanges() << ", ReColors=" << redBlackTree->getRecolorCount() << endl;
+		cout << "BST: Height=" << binarySearchTree->height() << ", DistinctWords=" << binarySearchTree->totalNodes() << ", TotalWords=" << binarySearchTree->totalWords() << ", Time=" << bstTime << "ms, Comparisons=" << binarySearchTree->getComparisonCount() << ", ReferenceChanges=" << binarySearchTree->getReferenceChanges() << endl;
+		cout << "AVL: Height=" << avlTree->height() << ", DistinctWords=" << avlTree->totalNodes() << ", TotalWords=" << avlTree->totalWords() << ", Time=" << avlTime << "ms, Comparisons=" << avlTree->getComparisonCount() << ", ReferenceChanges=" << avlTree->getReferenceChanges() << ", BalanceFactorChanges=" << avlTree->getBalanceFactorChangeCount() << endl;
+		cout << "RBT: Height=" << redBlackTree->height() << ", DistinctWords=" << redBlackTree->totalNodes() << ", TotalWords=" << redBlackTree->totalWords() << ", Time=" << rbtTime << "ms, Comparisons=" << redBlackTree->getComparisonCount() << ", ReferenceChanges=" << redBlackTree->getReferenceChanges() << ", ReColors=" << redBlackTree->getRecolorCount() << endl;
 	}
 
 	delete binarySearchTree;
@@ -155,19 +155,19 @@ int runRandomBenchmarks(Options options)
 	{
 		if(!options.noHeaders)
 		{
-			cout << "Count,Size,BTime,BHeight,BComp,BRef,ATime,AHeight,AComp,ARef,ABal,RTime,RHeight,RComp,RRef,RRec" << endl;
+			cout << "Count,Size,BTime,BHeight,BDist,BTotal,BComp,BRef,ATime,AHeight,ADist,ATotal,AComp,ARef,ABal,RTime,RHeight,RDist,RTotal,RComp,RRef,RRec" << endl;
 		}
 		cout << options.RandomCount << ',' << options.RandomSize << ',';
-		cout << bstTime << ',' << binarySearchTree->height() << ',' << binarySearchTree->getComparisonCount() << ',' << binarySearchTree->getReferenceChanges() << ',';
-		cout << avlTime << ',' << avlTree->height() << ',' << avlTree->getComparisonCount() << ',' << avlTree->getReferenceChanges() << ',' << avlTree->getBalanceFactorChangeCount() << ',';
-		cout << rbtTime << ',' << redBlackTree->height() << ',' << redBlackTree->getComparisonCount() << ',' << redBlackTree->getReferenceChanges() << ',' << redBlackTree->getRecolorCount() << endl;
+		cout << bstTime << ',' << binarySearchTree->height() << ',' << binarySearchTree->totalNodes() << ',' << binarySearchTree->totalWords() << ',' << binarySearchTree->getComparisonCount() << ',' << binarySearchTree->getReferenceChanges() << ',';
+		cout << avlTime << ',' << avlTree->height() << ',' << avlTree->totalNodes() << ',' << avlTree->totalWords() << ',' << avlTree->getComparisonCount() << ',' << avlTree->getReferenceChanges() << ',' << avlTree->getBalanceFactorChangeCount() << ',';
+		cout << rbtTime << ',' << redBlackTree->height() << ',' << redBlackTree->totalNodes() << ',' << redBlackTree->totalWords() << ',' << redBlackTree->getComparisonCount() << ',' << redBlackTree->getReferenceChanges() << ',' << redBlackTree->getRecolorCount() << endl;
 	}
 	else
 	{
 		cout << "Total Runtime for " << options.RandomCount << " random strings of length " << options.RandomSize << ": " << (bstTime + avlTime + rbtTime) << "ms" << endl;
-		cout << "BST: Height=" << binarySearchTree->height() << ", Time=" << bstTime << "ms, Comparisons=" << binarySearchTree->getComparisonCount() << ", ReferenceChanges=" << binarySearchTree->getReferenceChanges() << endl;
-		cout << "AVL: Height=" << avlTree->height() << ", Time=" << avlTime << "ms, Comparisons=" << avlTree->getComparisonCount() << ", ReferenceChanges=" << avlTree->getReferenceChanges() << ", BalanceFactorChanges=" << avlTree->getBalanceFactorChangeCount() << endl;
-		cout << "RBT: Height=" << redBlackTree->height() << ", Time=" << rbtTime << "ms, Comparisons=" << redBlackTree->getComparisonCount() << ", ReferenceChanges=" << redBlackTree->getReferenceChanges() << ", ReColors=" << redBlackTree->getRecolorCount() << endl;
+		cout << "BST: Height=" << binarySearchTree->height() << ", DistinctWords=" << binarySearchTree->totalNodes() << ", TotalWords=" << binarySearchTree->totalWords() << ", Time=" << bstTime << "ms, Comparisons=" << binarySearchTree->getComparisonCount() << ", ReferenceChanges=" << binarySearchTree->getReferenceChanges() << endl;
+		cout << "AVL: Height=" << avlTree->height() << ", DistinctWords=" << avlTree->totalNodes() << ", TotalWords=" << avlTree->totalWords() << ", Time=" << avlTime << "ms, Comparisons=" << avlTree->getComparisonCount() << ", ReferenceChanges=" << avlTree->getReferenceChanges() << ", BalanceFactorChanges=" << avlTree->getBalanceFactorChangeCount() << endl;
+		cout << "RBT: Height=" << redBlackTree->height() << ", DistinctWords=" << redBlackTree->totalNodes() << ", TotalWords=" << redBlackTree->totalWords() << ", Time=" << rbtTime << "ms, Comparisons=" << redBlackTree->getComparisonCount() << ", ReferenceChanges=" << redBlackTree->getReferenceChanges() << ", ReColors=" << redBlackTree->getRecolorCount() << endl;
 	}
 
 	delete binarySearchTree;

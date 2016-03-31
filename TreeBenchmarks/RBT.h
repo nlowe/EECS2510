@@ -43,8 +43,8 @@ struct RedBlackNode : BinaryTreeNode
 
 	~RedBlackNode()
 	{
-		if (Left != nullptr && !isMasterLeaf(static_cast<RedBlackNode*>(Left))) delete Left;
-		if (Right != nullptr && !isMasterLeaf(static_cast<RedBlackNode*>(Right))) delete Right;
+		if (Left != nullptr && !(static_cast<RedBlackNode*>(Left))->isMasterLeaf()) delete Left;
+		if (Right != nullptr && !(static_cast<RedBlackNode*>(Right))->isMasterLeaf()) delete Right;
 		
 		Parent = nullptr;
 		Left = Right = nullptr;
@@ -54,11 +54,13 @@ struct RedBlackNode : BinaryTreeNode
 	NodeColor Color = RED;
 
 	size_t height() const override { return 1 + std::max(Left == this ? -1 : Left->height(), Right == this ? -1 : Right->height()); }
+	size_t totalHeight() const override { return isMasterLeaf() ? 0 : this->BinaryTreeNode::totalHeight(); }
+	size_t payloadSum() const override { return isMasterLeaf() ? 0 : this->BinaryTreeNode::payloadSum(); }
 
 private:
-	static bool isMasterLeaf(RedBlackNode* n)
+	bool isMasterLeaf() const
 	{
-		return n->Left == n->Right && n->Left == n->Parent && n->Color == BLACK;
+		return Left == Right && Left == Parent && Color == BLACK;
 	}
 
 };
