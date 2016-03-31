@@ -1,3 +1,30 @@
+/*
+ * AVL.cpp - Implementation of an AVL Tree
+ *
+ * Built for EECS2510 - Nonlinear Data Structures
+ *	at The University of Toledo, Spring 2016
+ *
+ * Copyright (c) 2016 Nathan Lowe
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
 #include "stdafx.h"
 #include "AVL.h"
 #include <cassert>
@@ -10,6 +37,9 @@ AVL::~AVL()
 {
 }
 
+// Insert the specified string into the tree. If the word is not already in
+// the tree, the balance factors of nodes along the insertion path are updated
+// and rotations may be performed to keep the tree balanced.
 Word* AVL::add(std::string word)
 {
 	// The tree is empty, just update the root pointer
@@ -21,7 +51,7 @@ Word* AVL::add(std::string word)
 	}
 
 	// Otherwise, we need to find where to put it (P in the slides)
-	AVLTreeNode* P = static_cast<AVLTreeNode*>(Root);
+	AVLTreeNode* previous = static_cast<AVLTreeNode*>(Root);
 	// F in the slides
 	AVLTreeNode* lastRotationCandidateParent = nullptr;
 	// A in the slides
@@ -35,29 +65,29 @@ Word* AVL::add(std::string word)
 	int branchComparisonResult;
 
 	// search tree for insertion point
-	while (P != nullptr)
+	while (previous != nullptr)
 	{
-		branchComparisonResult = word.compare(P->Payload->key);
+		branchComparisonResult = word.compare(previous->Payload->key);
 		this->comparisons++;
 
 		if (branchComparisonResult == 0)
 		{
 			// The word we're inserting is already in the tree
-			P->Payload->count++;
-			return P->Payload;
+			previous->Payload->count++;
+			return previous->Payload;
 		}
 
 		// If this node's balance factor is already +/- 1 it may go to +/- 2 after the insertion
 		// Remember where the last node like this is, since we may have to rotate around it later
-		if (P->BalanceFactor != 0)
+		if (previous->BalanceFactor != 0)
 		{
-			lastRotationCandidate = P;
+			lastRotationCandidate = previous;
 			lastRotationCandidateParent = candidate;
 		}
 
 		// Remember where we used to be
-		candidate = P;
-		P = static_cast<AVLTreeNode*>((branchComparisonResult < 0) ? P->Left : P->Right);
+		candidate = previous;
+		previous = static_cast<AVLTreeNode*>((branchComparisonResult < 0) ? previous->Left : previous->Right);
 	}
 
 	// We didn't find the node already, so we have to insert a new one
@@ -81,31 +111,31 @@ Word* AVL::add(std::string word)
 	{
 		delta = 1;
 
-		P = static_cast<AVLTreeNode*>(lastRotationCandidate->Left);
-		nextAfterRotationCandidate = P;
+		previous = static_cast<AVLTreeNode*>(lastRotationCandidate->Left);
+		nextAfterRotationCandidate = previous;
 	}
 	else
 	{
 		delta = -1;
 
-		P = static_cast<AVLTreeNode*>(lastRotationCandidate->Right);
-		nextAfterRotationCandidate = P;
+		previous = static_cast<AVLTreeNode*>(lastRotationCandidate->Right);
+		nextAfterRotationCandidate = previous;
 	}
 
 	// Update balance factors, moving pointers along the way
-	while (P != toInsert)
+	while (previous != toInsert)
 	{
 		this->comparisons++;
 		this->balanceFactorChanges++;
-		if (word.compare(P->Payload->key) > 0)
+		if (word.compare(previous->Payload->key) > 0)
 		{
-			P->BalanceFactor = -1;
-			P = static_cast<AVLTreeNode*>(P->Right);
+			previous->BalanceFactor = -1;
+			previous = static_cast<AVLTreeNode*>(previous->Right);
 		}
 		else
 		{
-			P->BalanceFactor = +1;
-			P = static_cast<AVLTreeNode*>(P->Left);
+			previous->BalanceFactor = +1;
+			previous = static_cast<AVLTreeNode*>(previous->Left);
 		}
 	}
 
@@ -153,6 +183,7 @@ Word* AVL::add(std::string word)
 	return toInsert->Payload;
 }
 
+// Perform rotations about the specified nodes to keep the tree balanced
 void AVL::doRotations(AVLTreeNode* A, AVLTreeNode*& B, char delta)
 {
 	if (delta == 1) // left imbalance.  LL or LR?

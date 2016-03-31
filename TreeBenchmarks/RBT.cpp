@@ -1,3 +1,30 @@
+/*
+ * RBT.cpp - Implementation of a Red-Black Tree
+ *
+ * Built for EECS2510 - Nonlinear Data Structures
+ *	at The University of Toledo, Spring 2016
+ *
+ * Copyright (c) 2016 Nathan Lowe
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
 #include "stdafx.h"
 #include "RBT.h"
 #include <iostream>
@@ -39,50 +66,53 @@ Word* RBT::add(std::string word)
 	}
 
 	// Otherwise, we need to find where to put it
-	RedBlackNode* x = static_cast<RedBlackNode*>(Root);
-	RedBlackNode* y = nullptr;
+	RedBlackNode* previous = static_cast<RedBlackNode*>(Root);
+	RedBlackNode* candidate = nullptr;
 
 	int branchComparisonResult;
 
 	// search tree for insertion point
-	while (x != leafNodes)
+	while (previous != leafNodes)
 	{
-		branchComparisonResult = word.compare(x->Payload->key);
+		branchComparisonResult = word.compare(previous->Payload->key);
 		this->comparisons++;
 
 		if (branchComparisonResult == 0)
 		{
 			// The word we're inserting is already in the tree
-			x->Payload->count++;
-			return x->Payload;
+			previous->Payload->count++;
+			return previous->Payload;
 		}
 
 		// Remember where we used to be
-		y = x;
-		x = static_cast<RedBlackNode*>((branchComparisonResult < 0) ? x->Left : x->Right);
+		candidate = previous;
+		previous = static_cast<RedBlackNode*>((branchComparisonResult < 0) ? previous->Left : previous->Right);
 	}
 
 	// We didn't find the node already, so we have to insert a new one
 	auto toInsert = new RedBlackNode(new Word(word));
 	this->referenceChanges += 4;
-	toInsert->Parent = y;
+	toInsert->Parent = candidate;
 	toInsert->Left = toInsert->Right = leafNodes;
 
 	// Graft the new leaf node into the tree
 	if (branchComparisonResult < 0)
 	{
-		y->Left = toInsert;
+		candidate->Left = toInsert;
 	}
 	else
 	{
-		y->Right = toInsert;
+		candidate->Right = toInsert;
 	}
 
+	// Recolor and rotate if needed to keep the tree balanced
 	fixup(toInsert);
 
 	return toInsert->Payload;
 }
 
+// Recolors and optionally rotates the nodes starting at the specified node
+// to keep the tree balanced.
 void RBT::fixup(RedBlackNode* z)
 {
 	while(z->Parent->Color == RED)
@@ -116,7 +146,6 @@ void RBT::fixup(RedBlackNode* z)
 		}
 		else
 		{
-			// “else” clause symmetric to “then”.  Swap “left” and “right” 
 			auto y = static_cast<RedBlackNode*>(z->Parent->Parent->Left);
 			if (y->Color == RED)
 			{
@@ -144,9 +173,11 @@ void RBT::fixup(RedBlackNode* z)
 		}
 	}
 
+	// The root should always be black
 	(static_cast<RedBlackNode*>(Root))->Color = BLACK;
 }
 
+// Rotate the sub-tree pointed at by node x to the left
 void RBT::rotateLeft(RedBlackNode* x)
 {
 	auto y = static_cast<RedBlackNode*>(x->Right);
@@ -178,6 +209,7 @@ void RBT::rotateLeft(RedBlackNode* x)
 	x->Parent = y;
 }
 
+// Rotate the sub-tree pointed at by the node y to the right
 void RBT::rotateRight(RedBlackNode* x)
 {
 	auto y = static_cast<RedBlackNode*>(x->Left);
@@ -211,6 +243,7 @@ void RBT::rotateRight(RedBlackNode* x)
 
 void RBT::inOrderPrint(BinaryTreeNode* node) const
 {
+	// Don't try to print the leaf supernode
 	if ((static_cast<RedBlackNode*>(node))->isMasterLeaf()) return;
 
 	this->BST::inOrderPrint(node);

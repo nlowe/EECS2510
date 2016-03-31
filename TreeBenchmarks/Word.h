@@ -42,7 +42,6 @@ struct Word
 	// Construct a word from the specified string and count
 	explicit Word(std::string w, uint64_t c) : key(w), count(c) {}
 
-
 	friend std::ostream& operator<<(std::ostream& os, const Word& obj)
 	{
 		return os << "key: " << obj.key << ", count: " << obj.count;

@@ -51,10 +51,13 @@ struct BinaryTreeNode
 		if (Right != nullptr) delete Right;
 	}
 
+	// The height of the sub-tree from this node (1 plus the height of the larger of this node's left and right sub-tree)
 	virtual size_t height() const { return 1 + std::max(Left == nullptr ? 0 : Left->height(), Right == nullptr ? 0 : Right->height()); }
 
+	// The total height of the sub-tree from this node (1 plus the total height of each the left and right sub-tree)
 	virtual size_t totalHeight() const { return 1 + (Left == nullptr ? 0 : Left->totalHeight()) + (Right == nullptr ? 0 : Right->totalHeight()); }
 
+	// The total word count of the sub-tree from this node (the payload count plus the sum of the payloads of the left and right sub-trees)
 	virtual size_t payloadSum() const { return Payload->count + (Left == nullptr ? 0 : Left->payloadSum()) + (Right == nullptr ? 0 : Right->payloadSum()); }
 
 	friend std::ostream& operator<<(std::ostream& os, const BinaryTreeNode& obj)
@@ -94,8 +97,12 @@ public:
 	// Returns true iff the tree is empty
 	bool isEmpty() const { return Root == nullptr; }
 
+	// The height (number of levels) of the tree
 	size_t height() const { return isEmpty() ? 0 : Root->height(); }
+	// The total number of words in the tree
 	size_t totalWords() const { return isEmpty() ? 0 : Root->payloadSum(); }
+	// The total number of nodes in the tree
+	// This is the number of distinct words encountered
 	size_t totalNodes() const { return isEmpty() ? 0 : Root->totalHeight(); }
 protected:
 	// The node at the root of the tree

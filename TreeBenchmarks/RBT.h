@@ -53,10 +53,11 @@ struct RedBlackNode : BinaryTreeNode
 	RedBlackNode* Parent = nullptr;
 	NodeColor Color = RED;
 
-	size_t height() const override { return 1 + std::max(Left == this ? -1 : Left->height(), Right == this ? -1 : Right->height()); }
+	size_t height() const override { return isMasterLeaf() ? 0 : this->BinaryTreeNode::height(); }
 	size_t totalHeight() const override { return isMasterLeaf() ? 0 : this->BinaryTreeNode::totalHeight(); }
 	size_t payloadSum() const override { return isMasterLeaf() ? 0 : this->BinaryTreeNode::payloadSum(); }
 
+	// Whether or not this node is the leaf "supernode"
 	bool isMasterLeaf() const
 	{
 		return Left == Right && Left == Parent && Color == BLACK;
@@ -64,6 +65,16 @@ struct RedBlackNode : BinaryTreeNode
 
 };
 
+// An implementation of a Red-Black Tree. This tree has the following properties:
+// * Every node is colored either “Red” or “Black”
+// * The root is(always) black
+// * Every leaf, leafNodes, is always black
+// * If a node is red, then both of its children are black(hence, there can be no two consecutive
+//   red nodes on a path from root to leaf)
+// * For EVERY node, the number of black nodes between that node and the leaves is the same
+//
+// After inserting a new element, rotations and recolorings occur to ensure the tree conforms
+// to the rules defined above.
 class RBT : public BST
 {
 public:
@@ -75,15 +86,20 @@ public:
 	//		A pointer to the word represented by the key
 	Word* add(std::string key) override;
 
+	// Returns: The number of times the color of any node was changed
 	size_t getRecolorCount() const { return recolorCount; }
 private:
 	size_t recolorCount = 0;
 	RedBlackNode* leafNodes;
 
+	// Recolor nodes and rotate subtrees such that the tree conforms to the rules of a Red-Black Tree
 	void fixup(RedBlackNode* z);
+	// Rotate the sub-tree pointed at by node x to the left
 	void rotateLeft(RedBlackNode* x);
+	// Rotate the sub-tree pointed at by the node y to the right
 	void rotateRight(RedBlackNode* x);
 
+	// Overridden to not include the leaf supernode
 	void inOrderPrint(BinaryTreeNode* node) const override;
 };
 

@@ -34,9 +34,16 @@ struct AVLTreeNode : BinaryTreeNode
 {
 	explicit AVLTreeNode(Word* payload) : BinaryTreeNode(payload) {}
 
+	// The balance factor of the node
+	// This is the height of the left sub-tree minus the height of the right sub-tree
 	char BalanceFactor = 0;
 };
 
+// An implementation of an AVL Tree. This tree keeps its height balanced by keeping track
+// of the "Balance Factors" of each node (the height difference between the left and right sub-trees)
+//
+// When a node's height is different by more than two nodes between its left and right sub-trees,
+// rotations are performed to return the tree to an acceptably balanced state.
 class AVL : public BST
 {
 public:
@@ -48,6 +55,7 @@ public:
 	//		A pointer to the word represented by the key
 	Word* add(std::string key) override;
 
+	// Returns: The number of times the balance factor of any node was updated
 	size_t getBalanceFactorChangeCount() const { return balanceFactorChanges;  }
 
 private:

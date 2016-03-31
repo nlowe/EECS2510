@@ -27,6 +27,7 @@
 
 #pragma once
 #include <algorithm>
+#include <string>
 
 // Converts the specified string to lower case in-place based on the current collation
 // See: http://stackoverflow.com/questions/313970/how-to-convert-stdstring-to-lower-case/313990#313990
