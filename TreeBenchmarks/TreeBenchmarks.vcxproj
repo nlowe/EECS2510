@@ -171,7 +171,10 @@
     <Text Include="Test Files\Hamlet.txt" />
     <Text Include="Test Files\King James Bible.txt" />
     <Text Include="Test Files\Outlander - Diana Gabaldon.txt" />
-    <Text Include="Test Files\Shakespeare.txt" />
+    <Text Include="Test Files\Shakespeare.txt">
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
+    </Text>
     <Text Include="Test Files\To Kill a Mockingbird - Harper Lee.txt" />
     <Text Include="Test Files\War and Peace.txt" />
   </ItemGroup>

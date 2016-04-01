@@ -249,7 +249,7 @@ double benchmarkFile(BST* tree, string path)
 	{
 		size_t prev = 0;
 		size_t pos;
-		while ((pos = line.find_first_of(" \t-'\";:,.!?()", prev)) != string::npos)
+		while ((pos = line.find_first_of(" \t-'\";:,.!?()[]", prev)) != string::npos)
 		{
 			if (pos > prev && tree != nullptr) tree->add(line.substr(prev, pos - prev));
 			prev = pos + 1;
