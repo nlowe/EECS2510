@@ -120,7 +120,7 @@ public:
 	// Adds the word to the tree. If the word already exists, its occurrance count is incremeneted
 	// Returns:
 	//		A pointer to the word represented by the key
-	Word* add(std::string key);
+	void add(std::string key);
 
 	// Check to see if the tree is empty (the root is null)
 	bool isEmpty() const { return RootID == 0; }
@@ -138,7 +138,6 @@ private:
 	unsigned int AllocateNode()
 	{
 		auto id = NextNodeID++;
-		commitBase();
 		return id;
 	}
 

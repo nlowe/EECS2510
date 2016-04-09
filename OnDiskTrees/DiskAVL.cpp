@@ -60,8 +60,157 @@ DiskAVL::~DiskAVL()
 {
 }
 
-Word* DiskAVL::add(std::string key)
+// Insert the specified string into the tree. If the word is not already in
+// the tree, the balance factors of nodes along the insertion path are updated
+// and rotations may be performed to keep the tree balanced.
+void DiskAVL::add(std::string word)
 {
+	// TODO: This should be functional, but leaks all node handles currently
+	// TODO: I still need to figure out a good way to clean up the node pointers
+
+	// The tree is empty, just update the root pointer
+	if (isEmpty())
+	{
+		this->referenceChanges++;
+		auto r = new AVLDiskNode(AllocateNode(), new Word(word));
+		RootID = r->ID;
+
+		commitNode(r);
+
+		delete r;
+	}
+
+	// Otherwise, we need to find where to put it (P in the slides)
+	auto previous = loadNode(RootID);
+	// F in the slides
+	AVLDiskNode* lastRotationCandidateParent = nullptr;
+	// A in the slides
+	auto lastRotationCandidate = previous;
+	// B in the slides
+	AVLDiskNode* nextAfterRotationCandidate;
+	// Q in the slides
+	AVLDiskNode* candidate = nullptr;
+	char delta = 0;
+
+	int branchComparisonResult;
+
+	// search tree for insertion point
+	while (previous != nullptr)
+	{
+		branchComparisonResult = word.compare(previous->Payload->key);
+		this->comparisons++;
+
+		if (branchComparisonResult == 0)
+		{
+			// The word we're inserting is already in the tree
+			previous->Payload->count++;
+			return;
+		}
+
+		// If this node's balance factor is already +/- 1 it may go to +/- 2 after the insertion
+		// Remember where the last node like this is, since we may have to rotate around it later
+		if (previous->BalanceFactor != 0)
+		{
+			lastRotationCandidate = previous;
+			lastRotationCandidateParent = candidate;
+		}
+
+		// Remember where we used to be
+		candidate = previous;
+		previous = loadNode(branchComparisonResult < 0 ? previous->LeftID : previous->RightID);
+	}
+
+	// We didn't find the node already, so we have to insert a new one
+	auto toInsert = new AVLDiskNode(AllocateNode(), new Word(word));
+
+	// Graft the new leaf node into the tree
+	this->referenceChanges++;
+	if (branchComparisonResult < 0)
+	{
+		candidate->LeftID = toInsert->ID;
+	}
+	else
+	{
+		candidate->RightID = toInsert->ID;
+	}
+
+	// Figure out if we took the left or right branch after the last node with
+	// a +/- 1 balance factor prior to the insert
+	this->comparisons++;
+	if (word.compare(lastRotationCandidate->Payload->key) < 0)
+	{
+		delta = 1;
+
+		previous = loadNode(lastRotationCandidate->LeftID);
+		nextAfterRotationCandidate = previous;
+	}
+	else
+	{
+		delta = -1;
+
+		previous = loadNode(lastRotationCandidate->RightID);
+		nextAfterRotationCandidate = previous;
+	}
+
+	// Update balance factors, moving pointers along the way
+	while (previous != toInsert)
+	{
+		this->comparisons++;
+		this->balanceFactorChanges++;
+		if (word.compare(previous->Payload->key) > 0)
+		{
+			previous->BalanceFactor = -1;
+			previous = loadNode(previous->RightID);
+		}
+		else
+		{
+			previous->BalanceFactor = +1;
+			previous = loadNode(previous->LeftID);
+		}
+	}
+
+	if (lastRotationCandidate->BalanceFactor == 0)
+	{
+		// Tree was perfectly balanced
+		this->balanceFactorChanges++;
+		lastRotationCandidate->BalanceFactor = delta;
+		return;
+	}
+
+	if (lastRotationCandidate->BalanceFactor == -delta)
+	{
+		// Tree was out of balance, but is now balanced
+		this->balanceFactorChanges++;
+		lastRotationCandidate->BalanceFactor = 0;
+		return;
+	}
+
+	// Otherwise, we have rotations to do
+	doRotations(lastRotationCandidate, nextAfterRotationCandidate, delta);
+
+	// did we rebalance the root?
+	this->referenceChanges++;
+	if (lastRotationCandidateParent == nullptr)
+	{
+		RootID = nextAfterRotationCandidate->ID;
+	}
+
+	// otherwise, we rebalanced whatever was the
+	// child (left or right) of F.
+	else if (lastRotationCandidate->ID == lastRotationCandidateParent->LeftID)
+	{
+		lastRotationCandidateParent->LeftID = nextAfterRotationCandidate->ID;
+	}
+	else if (lastRotationCandidate->ID == lastRotationCandidateParent->RightID)
+	{
+		lastRotationCandidateParent->RightID = nextAfterRotationCandidate->ID;
+	}
+	else
+	{
+		assert(false);
+	}
+
+	return;
 }
 
 AVLDiskNode* DiskAVL::loadNode(unsigned int id)
@@ -94,6 +243,8 @@ AVLDiskNode* DiskAVL::loadNode(unsigned int id)
 
 void DiskAVL::commitNode(AVLDiskNode* node)
 {
+	commitBase();
+
 	std::ifstream reader;
 	std::ofstream writer;
 
