@@ -31,12 +31,9 @@
 #include <iostream>
 
 #include "Word.h"
-#include "Utils.h"
 #include "IDiskStatisticsTracker.h"
 
 // An AVL Tree node that is stored on disk
-//
-// Nodes are stored in clusters of multiple nodes, and have the following format:
 //
 // 2 bytes:  unsigned short containing the length of the key
 // variable: node key
@@ -101,33 +98,10 @@ struct AVLDiskNode
 // This tree only supports inserts, searches, and an in-order debug treversal
 //
 // On-Disk Format:
-// Nodes are kept in clusters to keep the number of files down. The number of nodes
-// per cluster can be changed when creating a new tree, but cannot be altered once
-// the tree is created. Clusters are named by monotonically increasing id's, starting
-// from 1. The directory format is as follows:
 // 
-// .../Path/To/Some/Tree.avl
-//    ├── _base.treedef
-//    ├── 0.ncl
-//    ├── 1.ncl
-//    └── 2.ncl
-// 
-// In this case, the tree's base directory is ".../Path/To/Some/Tree.avl". Tree metadata
-// is stored in _base.treedef, which has the following format:
-// 
-// 2 bytes: unsigned short containing the number of nodes per cluster
 // 4 bytes: unsigned int containing the next node id
 // 4 bytes: the ID of the root node, 0 if none
-//
-// To determine what cluster a node with an id of n resides in and its offset in the
-// clsuter, the following formula is used:
-//
-// cluster_id  = floor(n/nodes_per_cluster)
-// node_offset = mod(n, nodes_per_cluster)
-//
-// Node clusters have the following file format:
-//
-// variable: For each node in the cluster
+// variable: For each node in the tree
 //     2 bytes:  unsigned short containing the length of the key
 //     variable: node key
 //     4 bytes:  unsigned integer containing the number of times the word appears
@@ -139,7 +113,7 @@ struct AVLDiskNode
 class DiskAVL : public IDiskStatisticsTracker
 {
 public:
-	DiskAVL(std::string base, unsigned short nodesPerCluster);
+	explicit DiskAVL(std::string path);
 	~DiskAVL();
 
 	// Adds the word to the tree. If the word already exists, its occurrance count is incremeneted
@@ -155,8 +129,7 @@ public:
 private:
 	size_t balanceFactorChanges = 0;
 
-	std::string    TreeBase = "";
-	unsigned short NodesPerCluster = 100;
+	std::string    TreePath = "";
 	unsigned int   NextNodeID = 1;
 	unsigned int   RootID     = 0;
 
@@ -177,15 +150,6 @@ private:
 	void commitNode(AVLDiskNode* node);
 	// Write the tree metadata to disk
 	void commitBase();
-
-	unsigned int getClusterID(AVLDiskNode* node) const { return getClusterID(node->ID); }
-	unsigned int getClusterID(unsigned int id) const { return id / NodesPerCluster; }
-	
-	unsigned int getClusterOffset(AVLDiskNode* node) const { return getClusterOffset(node->ID); }
-	unsigned int getClusterOffset(unsigned int id) const { return id % NodesPerCluster; }
-	
-	std::string getClusterPath(AVLDiskNode* node) const { return getClusterPath(getClusterID(node)); }
-	std::string getClusterPath(unsigned int id) const { return utils::join(TreeBase, std::to_string(id) + ".ncl"); }
 
 	// Skip over the next node in the specified stream
 	static unsigned char skipReadNode(std::ifstream& reader)

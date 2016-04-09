@@ -60,7 +60,13 @@ namespace utils
 		return result;
 	}
 
-	inline bool CreateDirectories(std::string path)
+	inline std::string parent(std::string path)
+	{
+		auto idx = path.find_last_of(PATH_SEPERATOR);
+		return idx == std::string::npos ? path : path.substr(0, idx);
+	}
+
+	inline bool createDirectories(std::string path)
 	{
 		return SHCreateDirectoryEx(nullptr, std::wstring(path.begin(), path.end()).c_str(), nullptr) == ERROR_SUCCESS;
 	}

@@ -27,24 +27,27 @@
 #include "stdafx.h"
 
 #include "DiskAVL.h"
+#include "Utils.h"
 
 
-DiskAVL::DiskAVL(std::string base, unsigned short nodesPerCluster) : TreeBase(base), NodesPerCluster(nodesPerCluster)
+DiskAVL::DiskAVL(std::string path) : TreePath(path)
 {
 	std::ifstream reader;
-	reader.open(utils::join(base, "_base.treedef"));
+	reader.open(path, std::ios::binary);
 
 	readCount++;
 
 	if(!reader.good())
 	{
-		// Probably a new tree, try to commit the base
+		// Ensure the directory the tree should be placed in exists
+		utils::createDirectories(utils::parent(path));
+
+		// Probably a new tree, try to commit the empty metadata
 		commitBase();
 	}
 	else
 	{
 		// Existing tree
-		reader >> NodesPerCluster;
 		reader >> NextNodeID;
 		reader >> RootID;
 	}
@@ -60,22 +63,23 @@ Word* DiskAVL::add(std::string key)
 {
 }
 
-AVLDiskNode* DiskAVL::loadNode(unsigned id)
+AVLDiskNode* DiskAVL::loadNode(unsigned int id)
 {
-	auto path = getClusterPath(getClusterID(id));
+	if (id == 0) return nullptr;
 
 	std::ifstream reader;
-	reader.open(path, std::ios::binary);
+	reader.open(TreePath, std::ios::binary);
 
 	if (!reader.good())
 	{
 		reader.close();
-		throw std::runtime_error("Unable to open cluster for read: " + path);
+		throw std::runtime_error("Unable to open tree for read: " + TreePath);
 	}
 	
 	readCount++;
 
-	for (unsigned short i = 0; i < getClusterOffset(id) - 1; i++)
+	// Skip nodes until we get to the node we're looking for
+	for (unsigned short i = 0; i < id - 1; i++)
 	{
 		skipReadNode(reader);
 	}
@@ -89,27 +93,25 @@ AVLDiskNode* DiskAVL::loadNode(unsigned id)
 
 void DiskAVL::commitNode(AVLDiskNode* node)
 {
-	auto path = getClusterPath(node);
-
 	std::ifstream reader;
 	std::ofstream writer;
 
-	writer.open(path, std::ios::binary);
+	writer.open(TreePath, std::ios::binary);
 
 	if (!writer.good())
 	{
 		writer.close();
-		throw std::runtime_error("Unable to open cluster for read or create: " + path);
+		throw std::runtime_error("Unable to open cluster for read or create: " + TreePath);
 	}
 
 	writeCount++;
 	readCount++;
 
-	reader.open(path, std::ios::binary);
+	reader.open(TreePath, std::ios::binary);
 
 	// Skip any nodes before this node and seek the writer
 	size_t totalSeek = 0;
-	for (unsigned short i = 0; i < getClusterOffset(node->ID) - 1; i++)
+	for (unsigned short i = 0; i < node->ID - 1; i++)
 	{
 		totalSeek += skipReadNode(reader);
 	}
@@ -123,20 +125,17 @@ void DiskAVL::commitNode(AVLDiskNode* node)
 
 void DiskAVL::commitBase()
 {
-	auto path = utils::join(TreeBase, "_base.treedef");
-
 	std::ofstream writer;
-	writer.open(path, std::ios::binary);
+	writer.open(TreePath, std::ios::binary);
 
 	if (!writer.good())
 	{
 		writer.close();
-		throw std::runtime_error("Unable to open tree base for write or create: " + path);
+		throw std::runtime_error("Unable to open tree for write or create: " + TreePath);
 	}
 
 	writeCount++;
 
-	writer.write(reinterpret_cast<const char*>(&NodesPerCluster), sizeof(NodesPerCluster));
 	writer.write(reinterpret_cast<const char*>(&NextNodeID), sizeof(NextNodeID));
 	writer.write(reinterpret_cast<const char*>(&RootID), sizeof(RootID));
 
