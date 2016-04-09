@@ -32,6 +32,7 @@
 
 #include "Word.h"
 #include "IDiskStatisticsTracker.h"
+#include "IPerformanceStatsTracker.h"
 
 // An AVL Tree node that is stored on disk
 //
@@ -110,7 +111,7 @@ struct AVLDiskNode
 //     4 bytes:  unsigned integer containing the ID of the right child, 0 if none
 //
 // This structure is not thread-safe for inserts / writes
-class DiskAVL : public IDiskStatisticsTracker
+class DiskAVL : public IPerformanceStatsTracker, IDiskStatisticsTracker
 {
 public:
 	explicit DiskAVL(std::string path);

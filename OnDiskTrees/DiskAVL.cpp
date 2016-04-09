@@ -28,6 +28,7 @@
 
 #include "DiskAVL.h"
 #include "Utils.h"
+#include <cassert>
 
 
 DiskAVL::DiskAVL(std::string path) : TreePath(path)
@@ -144,20 +145,129 @@ void DiskAVL::commitBase()
 
 void DiskAVL::doRotations(AVLDiskNode* lastRotationCandidate, AVLDiskNode*& nextAfterRotationCandidate, char delta)
 {
+	if (delta == 1) // left imbalance.  LL or LR?
+	{
+		if (nextAfterRotationCandidate->BalanceFactor == 1)
+		{
+			rotateLeftLeft(lastRotationCandidate, nextAfterRotationCandidate);
+		}
+		else
+		{
+			rotateLeftRight(lastRotationCandidate, nextAfterRotationCandidate);
+		}
+	}
+	else // d=-1.  This is a right imbalance
+	{
+		if (nextAfterRotationCandidate->BalanceFactor == -1)
+		{
+			rotateRightRight(lastRotationCandidate, nextAfterRotationCandidate);
+		}
+		else
+		{
+			rotateRightLeft(lastRotationCandidate, nextAfterRotationCandidate);
+		}
+	}
 }
 
-void DiskAVL::rotateLeftLeft(AVLDiskNode* lastRotationCandidate, AVLDiskNode*& nextAfterRotationCandidate)
+void DiskAVL::rotateLeftLeft(AVLDiskNode* A, AVLDiskNode*& B)
 {
+	// Change the child pointers at A and B to
+	// reflect the rotation. Adjust the BFs at A & B
+	this->referenceChanges += 2;
+	this->balanceFactorChanges += 2;
+	A->LeftID  = B->RightID;
+	B->RightID = A->ID;
+	A->BalanceFactor = B->BalanceFactor = 0;
 }
 
-void DiskAVL::rotateLeftRight(AVLDiskNode* lastRotationCandidate, AVLDiskNode*& nextAfterRotationCandidate)
+void DiskAVL::rotateLeftRight(AVLDiskNode* A, AVLDiskNode*& B)
 {
+	// Adjust the child pointers of nodes A, B, & C
+	// to reflect the new post-rotation structure
+	auto C = loadNode(B->RightID); // C is B's right child
+	auto CL = C->LeftID;  // CL and CR are C's left
+	auto CR = C->RightID; //    and right children
+
+	this->referenceChanges += 4;
+	B->RightID = CL;
+	A->LeftID = CR;
+
+	C->LeftID = B->ID;
+	C->RightID = A->ID;
+	/*
+	   A              A                     C
+	  /              /                   /    \
+	 B       ->     C         ->        B      A
+	  \            / \                   \    /
+	   C          B   CR                 CL  CR
+	  / \          \
+	CL   CR         CL
+
+	*/
+
+	this->balanceFactorChanges += 3;
+	switch (C->BalanceFactor)
+	{
+		// Set the new BF’s at A and B, based on the
+		// BF at C. Note: There are 3 sub-cases
+		case  1: A->BalanceFactor = -1; B->BalanceFactor = 0; break;
+		case  0: A->BalanceFactor = B->BalanceFactor = 0; break;
+		case -1: A->BalanceFactor = 0; B->BalanceFactor = 1; break;
+		default: assert(false);
+	}
+
+	C->BalanceFactor = 0;
+	B = C;
 }
 
-void DiskAVL::rotateRightRight(AVLDiskNode* lastRotationCandidate, AVLDiskNode*& nextAfterRotationCandidate)
+void DiskAVL::rotateRightRight(AVLDiskNode* A, AVLDiskNode*& B)
 {
+	// Change the child pointers at A and B to
+	// reflect the rotation. Adjust the BFs at A & B
+	this->referenceChanges += 2;
+	this->balanceFactorChanges += 2;
+	A->RightID = B->LeftID;
+	B->LeftID  = A->ID;
+	A->BalanceFactor = B->BalanceFactor = 0;
 }
 
-void DiskAVL::rotateRightLeft(AVLDiskNode* lastRotationCandidate, AVLDiskNode*& nextAfterRotationCandidate)
+void DiskAVL::rotateRightLeft(AVLDiskNode* A, AVLDiskNode*& B)
 {
+	// Adjust the child pointers of nodes A, B, & C
+	// to reflect the new post-rotation structure
+	auto C  = loadNode(B->LeftID); // C is B's left child
+	auto CL = C->LeftID; // CL and CR are C's left
+	auto CR = C->RightID;//    and right children
+
+	/*
+			A              A                      C
+			 \              \                   /   \
+			  B       ->     C         ->      A     B
+			 /              / \                 \   /
+			C             CL   B                CL CR
+		   / \                /
+		 CL   CR             CR
+
+	 */
+
+	this->referenceChanges += 4;
+	A->RightID = CL;
+	B->LeftID  = CR;
+
+	C->RightID = B->ID;
+	C->LeftID  = A->ID;
+
+	this->balanceFactorChanges += 3;
+	switch (C->BalanceFactor)
+	{
+		// Set the new BF’s at A and B, based on the
+		// BF at C. Note: There are 3 sub-cases
+		case  1: A->BalanceFactor = 0; B->BalanceFactor = -1; break;
+		case  0: A->BalanceFactor = B->BalanceFactor = 0; break;
+		case -1: A->BalanceFactor = 1; B->BalanceFactor = 0; break;
+		default: assert(false);
+	}
+
+	C->BalanceFactor = 0;
+	B = C;
 }
