@@ -28,11 +28,12 @@
 #pragma once
 #include <string>
 #include <fstream>
+#include <memory>
 
 #include "Word.h"
 #include "IDiskStatisticsTracker.h"
 #include "IPerformanceStatsTracker.h"
-#include <memory>
+#include "Utils.h"
 
 // An AVL Tree node that is stored on disk
 //
@@ -47,29 +48,28 @@ struct AVLDiskNode : std::enable_shared_from_this<AVLDiskNode>
 	unsigned int ID;
 	Word* Payload;
 	char BalanceFactor;
-	unsigned int LeftID;
-	unsigned int RightID;
+	uint32_t LeftID;
+	uint32_t RightID;
 
 	explicit AVLDiskNode(int id, Word* payload) : ID(id), Payload(payload), BalanceFactor(0), LeftID(0), RightID(0) {}
 
-	explicit AVLDiskNode(int id, std::ifstream& reader) : ID(id), BalanceFactor(0), LeftID(0), RightID(0)
+	explicit AVLDiskNode(int id, std::fstream& f) : ID(id), BalanceFactor(0), LeftID(0), RightID(0)
 	{
 		unsigned short keylen;
-		reader >> keylen;
+		utils::read_binary(f, keylen);
 
-		auto buff = new char[keylen];
-		reader.read(buff, keylen);
+		std::string buff;
+		buff.resize(keylen);
+		f.read(const_cast<char*>(buff.c_str()), keylen);
 
 		uint32_t count;
-		reader >> count;
+		utils::read_binary(f, count);
 
 		Payload = new Word(std::string(buff), count);
 
-		delete[] buff;
-
-		reader >> BalanceFactor;
-		reader >> LeftID;
-		reader >> RightID;
+		utils::read_binary(f, BalanceFactor);
+		utils::read_binary(f, LeftID);
+		utils::read_binary(f, RightID);
 	}
 
 	~AVLDiskNode()
@@ -77,14 +77,17 @@ struct AVLDiskNode : std::enable_shared_from_this<AVLDiskNode>
 		delete Payload;
 	}
 
-	void write(std::ofstream& writer) const
+	void write(std::fstream& f) const
 	{
-		writer << static_cast<unsigned short>(Payload->key.length());
-
 		auto buff = Payload->key.c_str();
-		
-		writer.write(buff, strlen(buff));
-		writer << Payload->count << BalanceFactor << LeftID << RightID;
+		unsigned short len = strlen(buff);
+
+		utils::write_binary(f, len);
+		f.write(buff, strlen(buff));
+		utils::write_binary(f, Payload->count);
+		utils::write_binary(f, BalanceFactor);
+		utils::write_binary(f, LeftID);
+		utils::write_binary(f, RightID);
 	}
 };
 
@@ -147,22 +150,20 @@ private:
 	AVLDiskNode* loadNode(unsigned int id);
 
 	// Write the specified node to a cluster on disk
-	void commit(std::shared_ptr<AVLDiskNode>& node);
+	void commit(std::shared_ptr<AVLDiskNode>& node, bool includeBase = false);
 	// Write the tree metadata to disk
 	void commitBase();
 
 	// Skip over the next node in the specified stream
-	static unsigned char skipReadNode(std::ifstream& reader)
+	static void skipReadNode(std::fstream& f)
 	{
 		unsigned short len;
-		reader >> len;
+		utils::read_binary(f, len);
 
-		unsigned char offset = len + 13;
+		auto offset = len + 13;
 
 		// Skip the key and other data
-		reader.seekg(offset, std::ios::cur);
-
-		return offset;
+		f.seekg(offset, std::ios::cur);
 	}
 
 	// Perform tree rotations at the specified rotation candidate according to its balance factor and the specified delta

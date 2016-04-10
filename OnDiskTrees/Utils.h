@@ -32,7 +32,7 @@
 namespace utils
 {
 #ifndef PATH_SEPERATOR
-#	if defined(_WIN32)
+#	ifdef _WIN32
 #		define PATH_SEPERATOR '\\'
 #	else
 #		define PATH_SEPERATOR '/'
@@ -68,7 +68,22 @@ namespace utils
 
 	inline bool createDirectories(std::string path)
 	{
+		#ifndef _WIN32
+			throw std::runtime_exception("The way this is implemented requires a WIN32 call, but this is not a WIN32 platform");
+		#endif
 		return SHCreateDirectoryEx(nullptr, std::wstring(path.begin(), path.end()).c_str(), nullptr) == ERROR_SUCCESS;
+	}
+
+	// Cast all the things and read the correct number of bytes from the
+	// specified reader in binary mode into val
+	template<class T> void read_binary(std::fstream& reader, T& val ) {
+		reader.read(reinterpret_cast<char*>(&val), sizeof(val) );
+	}
+
+	// Cast all the things and write the correct number of bytes that
+	// represent the specified val to the writer in binary mode
+	template<class T> void write_binary(std::fstream& writer, T& val ) {
+		writer.write(reinterpret_cast<const char*>(&val), sizeof(val) );
 	}
 }
 

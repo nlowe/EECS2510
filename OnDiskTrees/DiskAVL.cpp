@@ -73,7 +73,9 @@ void DiskAVL::add(std::string word)
 		auto r = std::make_shared<AVLDiskNode>(AllocateNode(), new Word(word));
 		RootID = r->ID;
 
-		commit(r);
+		commit(r, true);
+
+		return;
 	}
 
 	// Otherwise, we need to find where to put it (P in the slides)
@@ -128,7 +130,8 @@ void DiskAVL::add(std::string word)
 	}
 
 	// We didn't find the node already, so we have to insert a new one
-	auto toInsert = new AVLDiskNode(AllocateNode(), new Word(word));
+	auto toInsert = std::make_shared<AVLDiskNode>(AllocateNode(), new Word(word));
+	commit(toInsert);
 
 	// Graft the new leaf node into the tree
 	this->referenceChanges++;
@@ -230,81 +233,83 @@ AVLDiskNode* DiskAVL::loadNode(unsigned int id)
 {
 	if (id == 0) return nullptr;
 
-	std::ifstream reader;
-	reader.open(TreePath, std::ios::binary);
+	std::fstream f(TreePath, std::ios::binary | std::ios::in);
 
-	if (!reader.good())
+	if (!f.good())
 	{
-		reader.close();
+		f.close();
 		throw std::runtime_error("Unable to open tree for read: " + TreePath);
 	}
-	
 	readCount++;
 
+	// Skip the metadata
+	f.seekg(sizeof NextNodeID + sizeof RootID, std::ios::beg);
+
 	// Skip nodes until we get to the node we're looking for
-	for (unsigned short i = 0; i < id - 1; i++)
+	for (auto i = 1; i < id - 1; i++)
 	{
-		skipReadNode(reader);
+		skipReadNode(f);
 	}
 
-	auto node = new AVLDiskNode(id, reader);
+	auto node = new AVLDiskNode(id, f);
 
-	reader.close();
+	f.close();
 
 	return node;
 }
 
-void DiskAVL::commit(std::shared_ptr<AVLDiskNode>& node)
+void DiskAVL::commit(std::shared_ptr<AVLDiskNode>& node, bool includeBase)
 {
-	commitBase();
+	std::fstream f(TreePath, std::ios::binary | std::ios::in | std::ios::out);
 
-	std::ifstream reader;
-	std::ofstream writer;
-
-	writer.open(TreePath, std::ios::binary);
-
-	if (!writer.good())
+	if (!f.good())
 	{
-		writer.close();
+		f.close();
 		throw std::runtime_error("Unable to open cluster for read or create: " + TreePath);
 	}
 
 	writeCount++;
 	readCount++;
-
-	reader.open(TreePath, std::ios::binary);
+	
+	if(includeBase)
+	{
+		utils::write_binary(f, NextNodeID);
+		utils::write_binary(f, RootID);
+		f.flush();
+	}
+	else
+	{
+		// We're noot writing the base metadata, skip over it
+		f.seekp(sizeof(NextNodeID) + sizeof(RootID), std::ios::beg);
+	}
 
 	// Skip any nodes before this node and seek the writer
-	size_t totalSeek = 0;
 	for (unsigned short i = 0; i < node->ID - 1; i++)
 	{
-		totalSeek += skipReadNode(reader);
+		skipReadNode(f);
 	}
-	writer.seekp(totalSeek, std::ios::cur);
 
-	node->write(writer);
+	node->write(f);
 
-	writer.close();
-	reader.close();
+	f.close();
 }
 
 void DiskAVL::commitBase()
 {
-	std::ofstream writer;
-	writer.open(TreePath, std::ios::binary);
+	std::fstream f(TreePath, std::ios::binary | std::ios::out);
 
-	if (!writer.good())
+	if (!f.good())
 	{
-		writer.close();
+		f.close();
 		throw std::runtime_error("Unable to open tree for write or create: " + TreePath);
 	}
 
 	writeCount++;
 
-	writer.write(reinterpret_cast<const char*>(&NextNodeID), sizeof(NextNodeID));
-	writer.write(reinterpret_cast<const char*>(&RootID), sizeof(RootID));
+	utils::write_binary(f, NextNodeID);
+	utils::write_binary(f, RootID);
 
-	writer.close();
+	f.close();
 }
 
 void DiskAVL::doRotations(std::shared_ptr<AVLDiskNode>& lastRotationCandidate, std::shared_ptr<AVLDiskNode>& nextAfterRotationCandidate, char delta)

@@ -30,6 +30,9 @@
 
 int main()
 {
+	// Delete the old file if it exists
+	remove("test.avl");
+
 	DiskAVL tree("test.avl");
 
 	tree.add("2 foobar");
