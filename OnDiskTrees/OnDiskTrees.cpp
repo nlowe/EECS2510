@@ -28,6 +28,21 @@
 #include "stdafx.h"
 #include "DiskAVL.h"
 
+using namespace std;
+
+// When benchmarking random strings, they will be made up of these characters
+const string alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+ // Generate a random string of the specified length
+inline string generateRandomString(size_t len)
+{
+	string result;
+
+	for (auto i = 0; i < len; i++) result += alphabet[rand() % alphabet.length()];
+
+	return result;
+}
+
 int main()
 {
 	// Delete the old file if it exists
@@ -35,9 +50,12 @@ int main()
 
 	DiskAVL tree("test.avl");
 
-	tree.add("1 barfoo");
-	tree.add("2 foobar");
-	tree.add("3 asdf");
+	for (auto i = 0; i < 1024; i++)
+	{
+		tree.add(generateRandomString(10));
+	}
+
+	tree.inOrderPrint();
 
     return 0;
 }

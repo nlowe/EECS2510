@@ -34,6 +34,7 @@
 #include "IDiskStatisticsTracker.h"
 #include "IPerformanceStatsTracker.h"
 #include "Utils.h"
+#include <iostream>
 
 // An AVL Tree node that is stored on disk
 //
@@ -130,6 +131,8 @@ public:
 
 	// Returns: The number of times the balance factor of any node was updated
 	size_t getBalanceFactorChangeCount() const { return balanceFactorChanges;  }
+
+	void inOrderPrint() { inOrderPrintFrom(RootID); }
 private:
 	size_t balanceFactorChanges = 0;
 
@@ -162,6 +165,16 @@ private:
 
 		// Skip the key and other data
 		f.seekg(offset, std::ios::cur);
+	}
+
+	void inOrderPrintFrom(unsigned int id)
+	{
+		if (id == 0) return;
+
+		auto node = loadNode(id);
+		inOrderPrintFrom(node->LeftID);
+		std::cout << node->Payload->key << ": " << node->Payload->count << " (node " << node->ID << ")" << std::endl;
+		inOrderPrintFrom(node->RightID);
 	}
 
 	// Perform tree rotations at the specified rotation candidate according to its balance factor and the specified delta
