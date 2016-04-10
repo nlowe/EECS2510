@@ -117,20 +117,12 @@ void DiskAVL::add(std::string word)
 
 		// Remember where we used to be
 		candidate = previous;
-
-		auto p = loadNode(branchComparisonResult < 0 ? previous->LeftID : previous->RightID);
-		if(p == nullptr)
-		{
-			previous.reset();
-		}
-		else
-		{
-			previous = p->shared_from_this();
-		}
+		previous = loadNode(branchComparisonResult < 0 ? previous->LeftID : previous->RightID);
 	}
 
 	// We didn't find the node already, so we have to insert a new one
 	auto toInsert = std::make_shared<AVLDiskNode>(AllocateNode(), new Word(word));
+	// Commit the new node to disk so it is available if needed
 	commit(toInsert, true);
 
 	// Graft the new leaf node into the tree
@@ -152,14 +144,14 @@ void DiskAVL::add(std::string word)
 	{
 		delta = 1;
 
-		previous = std::shared_ptr<AVLDiskNode>(loadNode(lastRotationCandidate->LeftID));
+		previous = loadNode(lastRotationCandidate->LeftID);
 		nextAfterRotationCandidate = previous;
 	}
 	else
 	{
 		delta = -1;
 
-		previous = std::shared_ptr<AVLDiskNode>(loadNode(lastRotationCandidate->LeftID));
+		previous = loadNode(lastRotationCandidate->RightID);
 		nextAfterRotationCandidate = previous;
 	}
 
@@ -172,13 +164,13 @@ void DiskAVL::add(std::string word)
 		{
 			previous->BalanceFactor = -1;
 			commit(previous);
-			previous = std::shared_ptr<AVLDiskNode>(loadNode(previous->RightID));
+			previous = loadNode(previous->RightID);
 		}
 		else
 		{
 			previous->BalanceFactor = +1;
 			commit(previous);
-			previous = std::shared_ptr<AVLDiskNode>(loadNode(previous->LeftID));
+			previous = loadNode(previous->LeftID);
 		}
 	}
 
@@ -201,14 +193,14 @@ void DiskAVL::add(std::string word)
 	}
 
 	// Otherwise, we have rotations to do
-	doRotations(lastRotationCandidate, nextAfterRotationCandidate, delta);
+	nextAfterRotationCandidate = doRotations(lastRotationCandidate, nextAfterRotationCandidate, delta);
 
 	// did we rebalance the root?
 	this->referenceChanges++;
 	if (lastRotationCandidateParent == nullptr)
 	{
 		RootID = nextAfterRotationCandidate->ID;
-		commitBase();
+		commitBase(true);
 	}
 
 	// otherwise, we rebalanced whatever was the
@@ -229,7 +221,7 @@ void DiskAVL::add(std::string word)
 	}
 }
 
-AVLDiskNode* DiskAVL::loadNode(unsigned int id)
+std::shared_ptr<AVLDiskNode> DiskAVL::loadNode(unsigned int id)
 {
 	if (id == 0) return nullptr;
 
@@ -246,19 +238,19 @@ AVLDiskNode* DiskAVL::loadNode(unsigned int id)
 	f.seekg(sizeof NextNodeID + sizeof RootID, std::ios::beg);
 
 	// Skip nodes until we get to the node we're looking for
-	for (auto i = 1; i < id - 1; i++)
+	for (auto i = 0; i < id - 1; i++)
 	{
 		skipReadNode(f);
 	}
 
-	auto node = new AVLDiskNode(id, f);
+	auto node = std::make_shared<AVLDiskNode>(id, f);
 
 	f.close();
 
 	return node;
 }
 
-void DiskAVL::commit(std::shared_ptr<AVLDiskNode>& node, bool includeBase)
+void DiskAVL::commit(std::shared_ptr<AVLDiskNode> node, bool includeBase)
 {
 	std::fstream f(TreePath, std::ios::binary | std::ios::in | std::ios::out);
 
@@ -294,9 +286,12 @@ void DiskAVL::commit(std::shared_ptr<AVLDiskNode>& node, bool includeBase)
 	f.close();
 }
 
-void DiskAVL::commitBase()
+void DiskAVL::commitBase(bool append)
 {
-	std::fstream f(TreePath, std::ios::binary | std::ios::out);
+	auto flags = std::ios::binary | std::ios::out;
+	if (append) flags |= std::ios::in;
+
+	std::fstream f(TreePath, flags);
 
 	if (!f.good())
 	{
@@ -312,7 +307,7 @@ void DiskAVL::commitBase()
 	f.close();
 }
 
-void DiskAVL::doRotations(std::shared_ptr<AVLDiskNode>& lastRotationCandidate, std::shared_ptr<AVLDiskNode>& nextAfterRotationCandidate, char delta)
+std::shared_ptr<AVLDiskNode> DiskAVL::doRotations(std::shared_ptr<AVLDiskNode> lastRotationCandidate, std::shared_ptr<AVLDiskNode> nextAfterRotationCandidate, char delta)
 {
 	if (delta == 1) // left imbalance.  LL or LR?
 	{
@@ -322,7 +317,7 @@ void DiskAVL::doRotations(std::shared_ptr<AVLDiskNode>& lastRotationCandidate, s
 		}
 		else
 		{
-			rotateLeftRight(lastRotationCandidate, nextAfterRotationCandidate);
+			nextAfterRotationCandidate = rotateLeftRight(lastRotationCandidate, nextAfterRotationCandidate);
 		}
 	}
 	else // d=-1.  This is a right imbalance
@@ -333,12 +328,14 @@ void DiskAVL::doRotations(std::shared_ptr<AVLDiskNode>& lastRotationCandidate, s
 		}
 		else
 		{
-			rotateRightLeft(lastRotationCandidate, nextAfterRotationCandidate);
+			nextAfterRotationCandidate = rotateRightLeft(lastRotationCandidate, nextAfterRotationCandidate);
 		}
 	}
+
+	return nextAfterRotationCandidate;
 }
 
-void DiskAVL::rotateLeftLeft(std::shared_ptr<AVLDiskNode>& A, std::shared_ptr<AVLDiskNode>& B)
+void DiskAVL::rotateLeftLeft(std::shared_ptr<AVLDiskNode> A, std::shared_ptr<AVLDiskNode> B)
 {
 	// Change the child pointers at A and B to
 	// reflect the rotation. Adjust the BFs at A & B
@@ -347,13 +344,16 @@ void DiskAVL::rotateLeftLeft(std::shared_ptr<AVLDiskNode>& A, std::shared_ptr<AV
 	A->LeftID  = B->RightID;
 	B->RightID = A->ID;
 	A->BalanceFactor = B->BalanceFactor = 0;
+
+	commit(A);
+	commit(B);
 }
 
-void DiskAVL::rotateLeftRight(std::shared_ptr<AVLDiskNode>& A, std::shared_ptr<AVLDiskNode>& B)
+std::shared_ptr<AVLDiskNode> DiskAVL::rotateLeftRight(std::shared_ptr<AVLDiskNode> A, std::shared_ptr<AVLDiskNode> B)
 {
 	// Adjust the child pointers of nodes A, B, & C
 	// to reflect the new post-rotation structure
-	auto C = loadNode(B->RightID)->shared_from_this(); // C is B's right child
+	auto C = loadNode(B->RightID); // C is B's right child
 	auto CL = C->LeftID;  // CL and CR are C's left
 	auto CR = C->RightID; //    and right children
 
@@ -386,10 +386,14 @@ void DiskAVL::rotateLeftRight(std::shared_ptr<AVLDiskNode>& A, std::shared_ptr<A
 	}
 
 	C->BalanceFactor = 0;
-	B = C;
+
+	commit(A);
+	commit(B);
+	commit(C);
+	return C;
 }
 
-void DiskAVL::rotateRightRight(std::shared_ptr<AVLDiskNode>& A, std::shared_ptr<AVLDiskNode>& B)
+void DiskAVL::rotateRightRight(std::shared_ptr<AVLDiskNode> A, std::shared_ptr<AVLDiskNode> B)
 {
 	// Change the child pointers at A and B to
 	// reflect the rotation. Adjust the BFs at A & B
@@ -398,13 +402,16 @@ void DiskAVL::rotateRightRight(std::shared_ptr<AVLDiskNode>& A, std::shared_ptr<
 	A->RightID = B->LeftID;
 	B->LeftID  = A->ID;
 	A->BalanceFactor = B->BalanceFactor = 0;
+
+	commit(A);
+	commit(B);
 }
 
-void DiskAVL::rotateRightLeft(std::shared_ptr<AVLDiskNode>& A, std::shared_ptr<AVLDiskNode>& B)
+std::shared_ptr<AVLDiskNode> DiskAVL::rotateRightLeft(std::shared_ptr<AVLDiskNode> A, std::shared_ptr<AVLDiskNode> B)
 {
 	// Adjust the child pointers of nodes A, B, & C
 	// to reflect the new post-rotation structure
-	auto C  = loadNode(B->LeftID)->shared_from_this(); // C is B's left child
+	auto C  = loadNode(B->LeftID); // C is B's left child
 	auto CL = C->LeftID; // CL and CR are C's left
 	auto CR = C->RightID;//    and right children
 
@@ -438,5 +445,9 @@ void DiskAVL::rotateRightLeft(std::shared_ptr<AVLDiskNode>& A, std::shared_ptr<A
 	}
 
 	C->BalanceFactor = 0;
-	B = C;
+
+	commit(A);
+	commit(B);
+	commit(C);
+	return C;
 }
