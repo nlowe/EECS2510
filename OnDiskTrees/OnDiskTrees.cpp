@@ -34,7 +34,7 @@ int main()
 	remove("test.avl");
 
 	DiskAVL tree("test.avl");
-
+	
 	tree.add("2 foobar");
 	tree.add("1 barfoo");
 	tree.add("3 asdf");

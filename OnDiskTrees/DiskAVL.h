@@ -43,13 +43,15 @@
 // 1 byte:   signed char containing the balance factor of the node
 // 4 bytes:  unsigned integer containing the ID of the left child, 0 if none
 // 4 bytes:  unsigned integer containing the ID of the right child, 0 if none
-struct AVLDiskNode : std::enable_shared_from_this<AVLDiskNode>
+struct AVLDiskNode
 {
 	unsigned int ID;
 	Word* Payload;
 	char BalanceFactor;
 	uint32_t LeftID;
 	uint32_t RightID;
+
+	explicit AVLDiskNode() : ID(0), Payload(nullptr), BalanceFactor(0), LeftID(0), RightID(0) {}
 
 	explicit AVLDiskNode(int id, Word* payload) : ID(id), Payload(payload), BalanceFactor(0), LeftID(0), RightID(0) {}
 
@@ -74,11 +76,13 @@ struct AVLDiskNode : std::enable_shared_from_this<AVLDiskNode>
 
 	~AVLDiskNode()
 	{
-		delete Payload;
+		if(Payload != nullptr) delete Payload;
 	}
 
 	void write(std::fstream& f) const
 	{
+		if (isEmptyNode()) throw std::runtime_error("Tried to write an empty node!");
+
 		auto buff = Payload->key.c_str();
 		unsigned short len = strlen(buff);
 
@@ -88,6 +92,11 @@ struct AVLDiskNode : std::enable_shared_from_this<AVLDiskNode>
 		utils::write_binary(f, BalanceFactor);
 		utils::write_binary(f, LeftID);
 		utils::write_binary(f, RightID);
+	}
+
+	bool isEmptyNode() const
+	{
+		return ID == 0;
 	}
 };
 
@@ -147,10 +156,10 @@ private:
 	// Attempt to load the specified node from disk. The caller is responsible for
 	// freeing the returned resource. A runtime exception is thrown if the node
 	// could not be read
-	AVLDiskNode* loadNode(unsigned int id);
+	AVLDiskNode& loadNode(unsigned int id);
 
 	// Write the specified node to a cluster on disk
-	void commit(std::shared_ptr<AVLDiskNode>& node, bool includeBase = false);
+	void commit(AVLDiskNode& node, bool includeBase = false);
 	// Write the tree metadata to disk
 	void commitBase();
 
@@ -168,14 +177,14 @@ private:
 
 	// Perform tree rotations at the specified rotation candidate according to its balance factor and the specified delta
 	// This is required to keep the tree acceptably balanced.
-	inline void doRotations(std::shared_ptr<AVLDiskNode>& lastRotationCandidate, std::shared_ptr<AVLDiskNode>& nextAfterRotationCandidate, char delta);
+	inline void doRotations(AVLDiskNode& lastRotationCandidate, AVLDiskNode& nextAfterRotationCandidate, char delta);
 
 	// Performs a rotation to handle the Left-Left case at the specified rotation candidate
-	inline void rotateLeftLeft(std::shared_ptr<AVLDiskNode>& lastRotationCandidate, std::shared_ptr<AVLDiskNode>& nextAfterRotationCandidate);
+	inline void rotateLeftLeft(AVLDiskNode& lastRotationCandidate, AVLDiskNode& nextAfterRotationCandidate);
 	// Performs a rotation to handle the Left-Right case at the specified rotation candidate
-	inline void rotateLeftRight(std::shared_ptr<AVLDiskNode>& lastRotationCandidate, std::shared_ptr<AVLDiskNode>& nextAfterRotationCandidate);
+	inline void rotateLeftRight(AVLDiskNode& lastRotationCandidate, AVLDiskNode& nextAfterRotationCandidate);
 	// Performs a rotation to handle the Right-Right case at the specified rotation candidate
-	inline void rotateRightRight(std::shared_ptr<AVLDiskNode>& lastRotationCandidate, std::shared_ptr<AVLDiskNode>& nextAfterRotationCandidate);
+	inline void rotateRightRight(AVLDiskNode& lastRotationCandidate, AVLDiskNode& nextAfterRotationCandidate);
 	// Performs a rotation to handle the Right-Left case at the specified rotation candidate
-	inline void rotateRightLeft(std::shared_ptr<AVLDiskNode>& lastRotationCandidate, std::shared_ptr<AVLDiskNode>& nextAfterRotationCandidate);
+	inline void rotateRightLeft(AVLDiskNode& lastRotationCandidate, AVLDiskNode& nextAfterRotationCandidate);
 };
