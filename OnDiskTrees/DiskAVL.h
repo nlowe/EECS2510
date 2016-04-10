@@ -116,7 +116,7 @@ struct AVLDiskNode
 //     4 bytes:  unsigned integer containing the ID of the right child, 0 if none
 //
 // This structure is not thread-safe for inserts / writes
-class DiskAVL : public IWordCounter, IDiskStatisticsTracker, IPerformanceStatsTracker
+class DiskAVL : public IWordCounter
 {
 public:
 	explicit DiskAVL(std::string path);
@@ -134,9 +134,9 @@ public:
 	// Returns: The number of times the balance factor of any node was updated
 	size_t getBalanceFactorChangeCount() const { return balanceFactorChanges;  }
 
-	std::unique_ptr<DocumentStatistics> getWordCount() override
+	std::unique_ptr<DocumentStatistics> getDocumentStatistics() override
 	{
-		return wordCountFrom(RootID);
+		return documentStatsFrom(RootID);
 	}
 
 	void inOrderPrint() override { inOrderPrintFrom(RootID); }
@@ -184,15 +184,16 @@ private:
 		inOrderPrintFrom(node->RightID);
 	}
 
-	std::unique_ptr<DocumentStatistics> wordCountFrom(unsigned int id)
+	std::unique_ptr<DocumentStatistics> documentStatsFrom(unsigned int id)
 	{
-		if (id == 0) return std::make_unique<DocumentStatistics>(0, 0);
+		if (id == 0) return std::make_unique<DocumentStatistics>(0, 0, 0);
 
 		auto n = loadNode(id);
-		auto leftStats = wordCountFrom(n->LeftID);
-		auto rightStats = wordCountFrom(n->RightID);
+		auto leftStats = documentStatsFrom(n->LeftID);
+		auto rightStats = documentStatsFrom(n->RightID);
 
 		return std::make_unique<DocumentStatistics>(
+			1 + max(leftStats->TreeHeight, rightStats->TreeHeight),
 			n->Payload->count + leftStats->TotalWords + rightStats->TotalWords,
 			1 + leftStats->DistinctWords + rightStats->DistinctWords
 		);

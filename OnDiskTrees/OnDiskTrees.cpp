@@ -27,13 +27,246 @@
 
 #include "stdafx.h"
 #include "DiskAVL.h"
+#include "Options.h"
+#include <chrono>
 
 using namespace std;
+
+DiskAVL* avlTree;
 
 // When benchmarking random strings, they will be made up of these characters
 const string alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
- // Generate a random string of the specified length
+// Forward-declare the functions so main can be at the top of the file as required
+void printHelp();
+inline string generateRandomString(size_t len);
+int runFileBenchmarks(Options options);
+int runRandomBenchmarks(Options options);
+double benchmarkFile(IWordCounter* tree, string path);
+double benchmarkRandom(IWordCounter* tree, size_t count, size_t itemLength);
+
+int main(int argc, char* argv[])
+{
+	// parse the command-line arguments
+	auto opts = Options(argc, argv);
+
+	if (opts.help)
+	{
+		printHelp();
+	}
+	else if(opts.errors)
+	{
+		cout << "One or more errors occurred while parsing arguments: " << endl;
+		cout << opts.errorMessage;
+		cout << endl;
+		cout << "Call with --help for help" << endl;
+
+		return -1;
+	}
+	else if(opts.RandomCount > 0 && opts.RandomSize > 0)
+	{
+		return runRandomBenchmarks(opts);
+	}
+	else if(opts.TestFilePath != "")
+	{
+		return runFileBenchmarks(opts);
+	}
+	else
+	{
+		printHelp();
+	}
+
+	return 0;
+}
+
+void printHelp()
+{
+	cout << "OnDiskTrees <-f path || <-r count <-s size>> [-c [-n]] [-k]" << endl;
+	cout << "Parameters:" << endl;
+	cout << "\t-f, --file\t\tThe input file to test" << endl;
+	cout << "\t-r, --random-count\tThe number of random strings to insert" << endl;
+	cout << "\t-s, --random-size\tThe size of the random strings to insert" << endl;
+	cout << "\t-c, --csv\t\tOutput data in CSV Format" << endl;
+	cout << "\t-n, --no-headers\tDon't include headers in CSV. Implies -c" << endl;
+	cout << "\t-k, --keep\t\tDon't delete existing trees before running the benchmarks" << endl;
+	cout << "\t-q, --quiet\t\tDon't do an in-order traversal after running benchmarks" << endl;
+
+	cout << endl;
+
+	cout << "In file mode, the file will be processed line by line and each word is inserted into" << endl;
+	cout << "each of the binary trees under test. Words that occur more than once in the file will" << endl;
+	cout << "have their count incremented. Stats pertaining to the tree are recorded for each tree." << endl;
+
+	cout << endl;
+
+	cout << "In random mode, the specified number of randomly generated strings are inserted into" << endl;
+	cout << "each tree under test. Multiple occurrences of each word is recorded. Stats pertaining" << endl;
+	cout << "the tree are recorded." << endl;
+
+	cout << endl;
+
+	cout << "If CSV mode is not specified, an in-order traversal will also be performed on each" << endl;
+	cout << "tree implementation, listing the words and the number of times they each occur" << endl;
+}
+
+// Run a file benchmark with the specified options
+int runFileBenchmarks(Options options)
+{
+	string path = options.TestFilePath;
+
+	ifstream reader;
+
+	reader.open(path);
+
+	// Ensure the file exists
+	if(!reader.good())
+	{
+		cerr << "Unable to open " << path << " for read" << endl;
+		return -1;
+	}
+
+	reader.close();
+
+	if(!options.keepExisting)
+	{
+		remove("test.avl");
+	}
+
+	// initialize the trees
+	avlTree = new DiskAVL("test.avl");
+
+	// Run the benchmarks, recording the time
+	auto overhead = benchmarkFile(nullptr, path);
+	auto avlTime = benchmarkFile(avlTree, path);
+
+	auto avlStats = avlTree->getDocumentStatistics();
+
+	// Print the results
+	if (options.csvMode)
+	{
+		if (!options.noHeaders)
+		{
+			cout << "File,Overhead,ATime,AHeight,ADist,ATotal,AComp,ARef,ABal,ARead,AWrite" << endl;
+		}
+		cout << '"' << path << "\"," << overhead << ',';
+		cout << avlTime << ',' << avlStats->TreeHeight << ',' << avlStats->DistinctWords << ',' << avlStats->TotalWords << ',' << avlTree->getComparisonCount() << ',' << avlTree->getReferenceChanges() << ',' << avlTree->getBalanceFactorChangeCount() << ',' << avlTree->GetReadCount() << ',' << avlTree->GetWriteCount();
+	}
+	else
+	{
+		cout << "Total Runtime for file \"" << path << "\": " << (overhead + avlTime) << "ms" << endl;
+		cout << "Overhead: " << overhead << "ms" << endl;
+		cout << "AVL: Height=" << avlStats->TreeHeight << ", DistinctWords=" << avlStats->DistinctWords << ", TotalWords=" << avlStats->TotalWords << ", Time=" << avlTime << "ms, Comparisons=" << avlTree->getComparisonCount() << ", ReferenceChanges=" << avlTree->getReferenceChanges() << ", BalanceFactorChanges=" << avlTree->getBalanceFactorChangeCount() << ", Reads=" << avlTree->GetReadCount() << ", Writes=" << avlTree->GetWriteCount() << endl;
+
+		if(!options.quiet)
+		{
+			cout << "AVL In Order:" << endl;
+			avlTree->inOrderPrint();
+			cout << "--------------------------" << endl << endl;	
+		}
+	}
+
+	// Free the trees
+	delete avlTree;
+
+	return 0;
+}
+
+// Run a random benchmark with the specified options
+int runRandomBenchmarks(Options options)
+{
+	if(!options.keepExisting)
+	{
+		remove("test.avl");
+	}
+
+	// Initialize the trees
+	avlTree = new DiskAVL("test.avl");
+
+	// Run the benchmarks and record the times
+	auto avlTime = benchmarkRandom(avlTree, options.RandomCount, options.RandomSize);
+
+	auto avlStats = avlTree->getDocumentStatistics();
+	// Print the results
+	if(options.csvMode)
+	{
+		if(!options.noHeaders)
+		{
+			cout << "Count,Size,ATime,AHeight,ADist,ATotal,AComp,ARef,ABal" << endl;
+		}
+		cout << options.RandomCount << ',' << options.RandomSize << ',';
+		cout << avlTime << ',' << avlStats->TreeHeight << ',' << avlStats->DistinctWords << ',' << avlStats->TotalWords << ',' << avlTree->getComparisonCount() << ',' << avlTree->getReferenceChanges() << ',' << avlTree->getBalanceFactorChangeCount() << ',' << avlTree->GetReadCount() << ',' << avlTree->GetWriteCount();
+	}
+	else
+	{
+		cout << "Total Runtime for " << options.RandomCount << " random strings of length " << options.RandomSize << ": " << (avlTime) << "ms" << endl;
+		cout << "AVL: Height=" << avlStats->TreeHeight << ", DistinctWords=" << avlStats->DistinctWords << ", TotalWords=" << avlStats->TotalWords << ", Time=" << avlTime << "ms, Comparisons=" << avlTree->getComparisonCount() << ", ReferenceChanges=" << avlTree->getReferenceChanges() << ", BalanceFactorChanges=" << avlTree->getBalanceFactorChangeCount() << ", Reads=" << avlTree->GetReadCount() << ", Writes=" << avlTree->GetWriteCount() << endl;
+
+		if(!options.quiet)
+		{
+			cout << "AVL In Order:" << endl;
+			avlTree->inOrderPrint();
+			cout << "--------------------------" << endl << endl;	
+		}
+	}
+
+	// Free the trees
+	delete avlTree;
+
+	return 0;
+}
+
+// Run a file benchmark against the specified tree implementation and file
+double benchmarkFile(IWordCounter* tree, string path)
+{
+	auto start = std::chrono::high_resolution_clock::now();
+
+	ifstream reader;
+
+	reader.open(path);
+
+	// Read the file line by line and then word by word
+	// We assume we can read the file, as this is tested in the function that calls this
+	string line;
+	while(getline(reader, line))
+	{
+		size_t prev = 0;
+		size_t pos;
+		while ((pos = line.find_first_of(" \t-'\";:,.!?()[]", prev)) != string::npos)
+		{
+			if (pos > prev && tree != nullptr) tree->add(line.substr(prev, pos - prev));
+			prev = pos + 1;
+		}
+		if (prev < line.length() && tree != nullptr) tree->add(line.substr(prev, string::npos));
+	}
+
+	reader.close();
+	auto end = chrono::high_resolution_clock::now();
+
+	// Convert to floating point milliseconds
+	chrono::duration<double, milli> duration = end - start;
+	return duration.count();
+}
+
+// Run a random benchmark against the specified tree, generating "count" random
+// alphanumeric strings of length "itemLength". Returns the time in milliseconds
+// it took to run
+double benchmarkRandom(IWordCounter* tree, size_t count, size_t itemLength)
+{
+	auto start = chrono::high_resolution_clock::now();
+
+	for (auto i = 0; i < count; i++)
+	{
+		tree->add(generateRandomString(itemLength));
+	}
+
+	auto end = chrono::high_resolution_clock::now();
+
+	chrono::duration<double, milli> duration = end - start;
+	return duration.count();
+}
+
+
+// Generate a random string of the specified length
 inline string generateRandomString(size_t len)
 {
 	string result;
@@ -42,24 +275,3 @@ inline string generateRandomString(size_t len)
 
 	return result;
 }
-
-int main()
-{
-	// Delete the old file if it exists
-	remove("test.avl");
-
-	DiskAVL tree("test.avl");
-
-	for (auto i = 0; i < 1024; i++)
-	{
-		tree.add(generateRandomString(2));
-	}
-
-	auto wc = tree.getWordCount();
-
-	cout << "Total Words: " << wc->TotalWords << ", Distinct Words: " << wc->DistinctWords << endl;
-	tree.inOrderPrint();
-
-    return 0;
-}
-

@@ -30,13 +30,14 @@
 
 struct DocumentStatistics
 {
-	DocumentStatistics(size_t total, size_t distinct) : TotalWords(total), DistinctWords(distinct) {}
+	DocumentStatistics(size_t height, size_t total, size_t distinct) : TreeHeight(height), TotalWords(total), DistinctWords(distinct) {}
 
+	const size_t TreeHeight;
 	const size_t TotalWords;
 	const size_t DistinctWords;
 };
 
-class IWordCounter
+class IWordCounter : public IDiskStatisticsTracker, public IPerformanceStatsTracker
 {
 public:
 	virtual ~IWordCounter()
@@ -46,5 +47,5 @@ public:
 	virtual void add(std::string word) = 0;
 	virtual std::unique_ptr<Word> find(std::string key) = 0;
 	virtual void inOrderPrint() = 0;
-	virtual std::unique_ptr<DocumentStatistics> getWordCount() = 0;
+	virtual std::unique_ptr<DocumentStatistics> getDocumentStatistics() = 0;
 };
