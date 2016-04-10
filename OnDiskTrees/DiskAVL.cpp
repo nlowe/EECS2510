@@ -131,7 +131,7 @@ void DiskAVL::add(std::string word)
 
 	// We didn't find the node already, so we have to insert a new one
 	auto toInsert = std::make_shared<AVLDiskNode>(AllocateNode(), new Word(word));
-	commit(toInsert);
+	commit(toInsert, true);
 
 	// Graft the new leaf node into the tree
 	this->referenceChanges++;
@@ -152,14 +152,14 @@ void DiskAVL::add(std::string word)
 	{
 		delta = 1;
 
-		previous = loadNode(lastRotationCandidate->LeftID)->shared_from_this();
+		previous = std::shared_ptr<AVLDiskNode>(loadNode(lastRotationCandidate->LeftID));
 		nextAfterRotationCandidate = previous;
 	}
 	else
 	{
 		delta = -1;
 
-		previous = loadNode(lastRotationCandidate->RightID)->shared_from_this();
+		previous = std::shared_ptr<AVLDiskNode>(loadNode(lastRotationCandidate->LeftID));
 		nextAfterRotationCandidate = previous;
 	}
 
@@ -172,13 +172,13 @@ void DiskAVL::add(std::string word)
 		{
 			previous->BalanceFactor = -1;
 			commit(previous);
-			previous = loadNode(previous->RightID)->shared_from_this();
+			previous = std::shared_ptr<AVLDiskNode>(loadNode(previous->RightID));
 		}
 		else
 		{
 			previous->BalanceFactor = +1;
 			commit(previous);
-			previous = loadNode(previous->LeftID)->shared_from_this();
+			previous = std::shared_ptr<AVLDiskNode>(loadNode(previous->LeftID));
 		}
 	}
 
