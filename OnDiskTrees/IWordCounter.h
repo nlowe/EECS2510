@@ -1,5 +1,5 @@
 /*
- * OnDiskTrees.cpp - The main benchmarking harness
+ * IWordCounter.h - Interface and helper classes for an abstract word counter
  *
  * Built for EECS2510 - Nonlinear Data Structures
  *	at The University of Toledo, Spring 2016
@@ -25,41 +25,26 @@
  * SOFTWARE.
  */
 
-#include "stdafx.h"
-#include "DiskAVL.h"
+#pragma once
+#include <string>
 
-using namespace std;
-
-// When benchmarking random strings, they will be made up of these characters
-const string alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-
- // Generate a random string of the specified length
-inline string generateRandomString(size_t len)
+struct DocumentStatistics
 {
-	string result;
+	DocumentStatistics(size_t total, size_t distinct) : TotalWords(total), DistinctWords(distinct) {}
 
-	for (auto i = 0; i < len; i++) result += alphabet[rand() % alphabet.length()];
+	const size_t TotalWords;
+	const size_t DistinctWords;
+};
 
-	return result;
-}
-
-int main()
+class IWordCounter
 {
-	// Delete the old file if it exists
-	remove("test.avl");
-
-	DiskAVL tree("test.avl");
-
-	for (auto i = 0; i < 1024; i++)
+public:
+	virtual ~IWordCounter()
 	{
-		tree.add(generateRandomString(2));
 	}
 
-	auto wc = tree.getWordCount();
-
-	cout << "Total Words: " << wc->TotalWords << ", Distinct Words: " << wc->DistinctWords << endl;
-	tree.inOrderPrint();
-
-    return 0;
-}
-
+	virtual void add(std::string word) = 0;
+	virtual std::unique_ptr<Word> find(std::string key) = 0;
+	virtual void inOrderPrint() = 0;
+	virtual std::unique_ptr<DocumentStatistics> getWordCount() = 0;
+};

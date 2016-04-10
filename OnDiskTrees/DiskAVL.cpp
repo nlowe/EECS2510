@@ -221,6 +221,28 @@ void DiskAVL::add(std::string word)
 	}
 }
 
+std::unique_ptr<Word> DiskAVL::find(std::string key)
+{
+	if (isEmpty()) return nullptr;
+
+	auto candidate = loadNode(RootID);
+
+	while(candidate != nullptr)
+	{
+		this->comparisons++;
+		auto cmp = key.compare(candidate->Payload->key);
+
+		if (cmp == 0)
+		{
+			return std::make_unique<Word>(candidate->Payload->key, candidate->Payload->count);
+		}
+
+		candidate = loadNode(cmp < 0 ? candidate->LeftID : candidate->RightID);
+	}
+
+	return nullptr;
+}
+
 std::shared_ptr<AVLDiskNode> DiskAVL::loadNode(unsigned int id)
 {
 	if (id == 0) return nullptr;

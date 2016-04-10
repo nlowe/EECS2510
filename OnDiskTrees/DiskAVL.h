@@ -35,6 +35,7 @@
 #include "IPerformanceStatsTracker.h"
 #include "Utils.h"
 #include <iostream>
+#include "IWordCounter.h"
 
 // An AVL Tree node that is stored on disk
 //
@@ -115,7 +116,7 @@ struct AVLDiskNode
 //     4 bytes:  unsigned integer containing the ID of the right child, 0 if none
 //
 // This structure is not thread-safe for inserts / writes
-class DiskAVL : public IPerformanceStatsTracker, IDiskStatisticsTracker
+class DiskAVL : public IWordCounter, IDiskStatisticsTracker, IPerformanceStatsTracker
 {
 public:
 	explicit DiskAVL(std::string path);
@@ -124,7 +125,8 @@ public:
 	// Adds the word to the tree. If the word already exists, its occurrance count is incremeneted
 	// Returns:
 	//		A pointer to the word represented by the key
-	void add(std::string key);
+	void add(std::string key) override;
+	std::unique_ptr<Word> find(std::string key) override;
 
 	// Check to see if the tree is empty (the root is null)
 	bool isEmpty() const { return RootID == 0; }
@@ -132,7 +134,12 @@ public:
 	// Returns: The number of times the balance factor of any node was updated
 	size_t getBalanceFactorChangeCount() const { return balanceFactorChanges;  }
 
-	void inOrderPrint() { inOrderPrintFrom(RootID); }
+	std::unique_ptr<DocumentStatistics> getWordCount() override
+	{
+		return wordCountFrom(RootID);
+	}
+
+	void inOrderPrint() override { inOrderPrintFrom(RootID); }
 private:
 	size_t balanceFactorChanges = 0;
 
@@ -175,6 +182,20 @@ private:
 		inOrderPrintFrom(node->LeftID);
 		std::cout << node->Payload->key << ": " << node->Payload->count << " (node " << node->ID << ")" << std::endl;
 		inOrderPrintFrom(node->RightID);
+	}
+
+	std::unique_ptr<DocumentStatistics> wordCountFrom(unsigned int id)
+	{
+		if (id == 0) return std::make_unique<DocumentStatistics>(0, 0);
+
+		auto n = loadNode(id);
+		auto leftStats = wordCountFrom(n->LeftID);
+		auto rightStats = wordCountFrom(n->RightID);
+
+		return std::make_unique<DocumentStatistics>(
+			n->Payload->count + leftStats->TotalWords + rightStats->TotalWords,
+			1 + leftStats->DistinctWords + rightStats->DistinctWords
+		);
 	}
 
 	// Perform tree rotations at the specified rotation candidate according to its balance factor and the specified delta
