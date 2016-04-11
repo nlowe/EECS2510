@@ -41,6 +41,8 @@ DiskAVL::DiskAVL(std::string path) : TreePath(path)
 
 	if(!reader.good())
 	{
+		verbose::write("Creating new tree at " + path);
+
 		// Ensure the directory the tree should be placed in exists
 		utils::createDirectories(utils::parent(path));
 
@@ -49,6 +51,8 @@ DiskAVL::DiskAVL(std::string path) : TreePath(path)
 	}
 	else
 	{
+		verbose::write("Loading tree from " + path);
+
 		// Existing tree
 		reader >> NextNodeID;
 		reader >> RootID;
@@ -260,11 +264,12 @@ std::shared_ptr<AVLDiskNode> DiskAVL::loadNode(unsigned int id)
 	f.seekg(sizeof NextNodeID + sizeof RootID, std::ios::beg);
 
 	// Skip nodes until we get to the node we're looking for
-	for (auto i = 0; i < id - 1; i++)
+	for (unsigned int i = 0; i < id - 1; i++)
 	{
 		skipReadNode(f);
 	}
 
+	verbose::write("Reading node from offset " + to_string(f.tellg()));
 	auto node = std::make_shared<AVLDiskNode>(id, f);
 
 	f.close();
@@ -272,19 +277,42 @@ std::shared_ptr<AVLDiskNode> DiskAVL::loadNode(unsigned int id)
 	return node;
 }
 
-void DiskAVL::commit(std::shared_ptr<AVLDiskNode> node, bool includeBase)
+void DiskAVL::commitMany(size_t count, std::shared_ptr<AVLDiskNode> nodes[], bool includeBase)
 {
+	if (count == 0) throw std::invalid_argument("Must commit at least one node");
+
+	if(count > 1)
+	{
+		// We need to sort the node list by ID's. A simple insertion sort should be sufficient
+		for (auto offset = 1; offset < count; offset++)
+		{
+			// Place the next thing outside the sorted partition in the correct spot within the sorted partition
+			for (auto index = offset; index > 0; index--)
+			{
+				comparisons++;
+				if (nodes[index]->ID < nodes[index-1]->ID)
+				{
+					nodes[index].swap(nodes[index - 1]);
+				}
+				else
+				{
+					break;
+				}
+			}
+		}
+	}
+
 	std::fstream f(TreePath, std::ios::binary | std::ios::in | std::ios::out);
 
 	if (!f.good())
 	{
 		f.close();
-		throw std::runtime_error("Unable to open cluster for read or create: " + TreePath);
+		throw std::runtime_error("Unable to open tree for read or create: " + TreePath);
 	}
 
 	writeCount++;
 	readCount++;
-	
+
 	if(includeBase)
 	{
 		utils::write_binary(f, NextNodeID);
@@ -297,19 +325,28 @@ void DiskAVL::commit(std::shared_ptr<AVLDiskNode> node, bool includeBase)
 		f.seekp(sizeof(NextNodeID) + sizeof(RootID), std::ios::beg);
 	}
 
-	// Skip any nodes before this node and seek the writer
-	for (unsigned short i = 0; i < node->ID - 1; i++)
+	size_t lastID = 0;
+	for (size_t i = 0; i < count; i++)
 	{
-		skipReadNode(f);
-	}
+		auto node = nodes[i];
+		// Skip any nodes before this node and seek the writer
+		for (unsigned short j = lastID; j < node->ID - 1; j++)
+		{
+			skipReadNode(f);
+		}
+		lastID = node->ID + 1;
 
-	node->write(f);
+		verbose::write("Writing node at offset " + to_string(f.tellg()));
+		node->write(f);
+	}
 
 	f.close();
 }
 
 void DiskAVL::commitBase(bool append)
 {
+	verbose::write("Commiting base metadata");
+
 	auto flags = std::ios::binary | std::ios::out;
 	if (append) flags |= std::ios::in;
 
@@ -367,8 +404,12 @@ void DiskAVL::rotateLeftLeft(std::shared_ptr<AVLDiskNode> A, std::shared_ptr<AVL
 	B->RightID = A->ID;
 	A->BalanceFactor = B->BalanceFactor = 0;
 
-	commit(A);
-	commit(B);
+	std::shared_ptr<AVLDiskNode> toCommit[2];
+
+	toCommit[0] = A;
+	toCommit[1] = B;
+
+	commitMany(2, toCommit);
 }
 
 std::shared_ptr<AVLDiskNode> DiskAVL::rotateLeftRight(std::shared_ptr<AVLDiskNode> A, std::shared_ptr<AVLDiskNode> B)
@@ -409,9 +450,13 @@ std::shared_ptr<AVLDiskNode> DiskAVL::rotateLeftRight(std::shared_ptr<AVLDiskNod
 
 	C->BalanceFactor = 0;
 
-	commit(A);
-	commit(B);
-	commit(C);
+	std::shared_ptr<AVLDiskNode> toCommit[3];
+
+	toCommit[0] = A;
+	toCommit[1] = B;
+	toCommit[2] = C;
+
+	commitMany(3, toCommit);
 	return C;
 }
 
@@ -425,8 +470,12 @@ void DiskAVL::rotateRightRight(std::shared_ptr<AVLDiskNode> A, std::shared_ptr<A
 	B->LeftID  = A->ID;
 	A->BalanceFactor = B->BalanceFactor = 0;
 
-	commit(A);
-	commit(B);
+	std::shared_ptr<AVLDiskNode> toCommit[2];
+
+	toCommit[0] = A;
+	toCommit[1] = B;
+
+	commitMany(2, toCommit);
 }
 
 std::shared_ptr<AVLDiskNode> DiskAVL::rotateRightLeft(std::shared_ptr<AVLDiskNode> A, std::shared_ptr<AVLDiskNode> B)
@@ -468,8 +517,12 @@ std::shared_ptr<AVLDiskNode> DiskAVL::rotateRightLeft(std::shared_ptr<AVLDiskNod
 
 	C->BalanceFactor = 0;
 
-	commit(A);
-	commit(B);
-	commit(C);
+	std::shared_ptr<AVLDiskNode> toCommit[3];
+
+	toCommit[0] = A;
+	toCommit[1] = B;
+	toCommit[2] = C;
+
+	commitMany(3, toCommit);
 	return C;
 }

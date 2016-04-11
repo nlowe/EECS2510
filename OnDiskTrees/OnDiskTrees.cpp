@@ -32,6 +32,14 @@
 
 using namespace std;
 
+// Since the verbose namespace is used multiple times in different files,
+// we need to define an implementation of the enable flag in exactly one
+// translation unit so that it is shared between all units
+namespace verbose
+{
+	bool enable = false;
+}
+
 DiskAVL* avlTree;
 
 // When benchmarking random strings, they will be made up of these characters
@@ -81,7 +89,7 @@ int main(int argc, char* argv[])
 
 void printHelp()
 {
-	cout << "OnDiskTrees <-f path || <-r count <-s size>> [-c [-n]] [-k]" << endl;
+	cout << "OnDiskTrees <-f path || <-r count <-s size>> [-c [-n] || -k || -v]" << endl;
 	cout << "Parameters:" << endl;
 	cout << "\t-f, --file\t\tThe input file to test" << endl;
 	cout << "\t-r, --random-count\tThe number of random strings to insert" << endl;
@@ -90,6 +98,7 @@ void printHelp()
 	cout << "\t-n, --no-headers\tDon't include headers in CSV. Implies -c" << endl;
 	cout << "\t-k, --keep\t\tDon't delete existing trees before running the benchmarks" << endl;
 	cout << "\t-q, --quiet\t\tDon't do an in-order traversal after running benchmarks" << endl;
+	cout << "\t-v, --verbose\t\tOutput verbose messages" << endl;
 
 	cout << endl;
 

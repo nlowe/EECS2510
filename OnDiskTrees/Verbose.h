@@ -1,5 +1,5 @@
 /*
- * IWordCounter.h - Interface and helper classes for an abstract word counter
+ * Verbose.h - Interface for printing global verbose messages
  *
  * Built for EECS2510 - Nonlinear Data Structures
  *	at The University of Toledo, Spring 2016
@@ -24,31 +24,19 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-
 #pragma once
 #include <string>
+#include <iostream>
 
-#include "IDiskStatisticsTracker.h"
-#include "IPerformanceStatsTracker.h"
-
-struct DocumentStatistics
+namespace verbose
 {
-	DocumentStatistics(size_t height, size_t total, size_t distinct) : TreeHeight(height), TotalWords(total), DistinctWords(distinct) {}
+	// A global flag to enable or disable verbose output
+	// The implementation is defined in main.cpp so that multiple files can access this flag
+	extern bool enable;
 
-	const size_t TreeHeight;
-	const size_t TotalWords;
-	const size_t DistinctWords;
-};
-
-class IWordCounter : public IDiskStatisticsTracker, public IPerformanceStatsTracker
-{
-public:
-	virtual ~IWordCounter()
+	// Write a verbose message to standard output if enabled
+	inline void write(std::string msg)
 	{
+		if (enable) std::cout << msg << std::endl;
 	}
-
-	virtual void add(std::string word) = 0;
-	virtual std::unique_ptr<Word> find(std::string key) = 0;
-	virtual void inOrderPrint() = 0;
-	virtual std::unique_ptr<DocumentStatistics> getDocumentStatistics() = 0;
-};
+}
