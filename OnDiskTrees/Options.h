@@ -27,6 +27,7 @@
 
 #pragma once
 #include <string>
+#include "Verbose.h"
 
 // Parses any options passed on the command line
 struct Options
@@ -145,6 +146,10 @@ struct Options
 			else if(arg == "-q" || arg == "--quiet")
 			{
 				quiet = true;
+			}
+			else if(arg == "-v" || arg == "--verbose")
+			{
+				verbose::enable = true;
 			}
 			else
 			{

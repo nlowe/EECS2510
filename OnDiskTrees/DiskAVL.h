@@ -29,12 +29,11 @@
 #include <string>
 #include <fstream>
 #include <memory>
+#include <iostream>
 
 #include "Word.h"
-#include "IDiskStatisticsTracker.h"
-#include "IPerformanceStatsTracker.h"
 #include "Utils.h"
-#include <iostream>
+#include "Verbose.h"
 #include "IWordCounter.h"
 
 // An AVL Tree node that is stored on disk
@@ -158,7 +157,16 @@ private:
 	std::shared_ptr<AVLDiskNode> loadNode(unsigned int id);
 
 	// Write the specified node to a cluster on disk
-	void commit(std::shared_ptr<AVLDiskNode> node, bool includeBase = false);
+	void commit(std::shared_ptr<AVLDiskNode> node, bool includeBase = false)
+	{
+		std::shared_ptr<AVLDiskNode> arr[1] = { node };
+
+		commitMany(1, arr, includeBase);
+	}
+	
+	// Write multiple nodes to a cluster on disk
+	void commitMany(size_t count, std::shared_ptr<AVLDiskNode> nodes[], bool includeBase = false);
+
 	// Write the tree metadata to disk
 	void commitBase(bool append=false);
 
@@ -169,6 +177,8 @@ private:
 		utils::read_binary(f, len);
 
 		auto offset = len + 13;
+
+		verbose::write("Asked to skip one node, skipping 2 + " + std::to_string(offset) + " bytes");
 
 		// Skip the key and other data
 		f.seekg(offset, std::ios::cur);
