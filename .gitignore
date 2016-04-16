@@ -3,6 +3,7 @@
 
 *.avl
 *.btree
+*.VC.db
 
 # User-specific files
 *.suo
