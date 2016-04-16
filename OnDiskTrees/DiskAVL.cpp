@@ -34,8 +34,8 @@
 
 DiskAVL::DiskAVL(std::string path) : TreePath(path)
 {
-	std::ifstream reader;
-	reader.open(path, std::ios::binary);
+	std::fstream reader;
+	reader.open(path, std::ios::binary | std::ios::in);
 
 	readCount++;
 
@@ -50,8 +50,8 @@ DiskAVL::DiskAVL(std::string path) : TreePath(path)
 	else
 	{
 		// Existing tree
-		reader >> NextNodeID;
-		reader >> RootID;
+		utils::read_binary(reader, NextNodeID);
+		utils::read_binary(reader, RootID);
 	}
 
 	reader.close();

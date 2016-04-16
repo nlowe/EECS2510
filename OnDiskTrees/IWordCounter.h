@@ -28,6 +28,10 @@
 #pragma once
 #include <string>
 
+#include "IDiskStatisticsTracker.h"
+#include "IPerformanceStatsTracker.h"
+#include "Word.h"
+
 struct DocumentStatistics
 {
 	DocumentStatistics(size_t height, size_t total, size_t distinct) : TreeHeight(height), TotalWords(total), DistinctWords(distinct) {}

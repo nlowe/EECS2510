@@ -29,12 +29,10 @@
 #include <string>
 #include <fstream>
 #include <memory>
+#include <iostream>
 
 #include "Word.h"
-#include "IDiskStatisticsTracker.h"
-#include "IPerformanceStatsTracker.h"
 #include "Utils.h"
-#include <iostream>
 #include "IWordCounter.h"
 
 // An AVL Tree node that is stored on disk
