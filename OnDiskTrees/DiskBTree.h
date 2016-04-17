@@ -43,7 +43,7 @@ struct BTreeNode
 	const unsigned int ID;
 	bool isLeaf;
 
-	// N in the slides
+	// N-1 in the slides, but we're zero-indexed so we should be fine
 	uint32_t NextFreeKey = 0;
 	// Actually an array of Word pointers
 	Word** Keys;
@@ -53,8 +53,8 @@ struct BTreeNode
 	BTreeNode(unsigned int id, unsigned short factor, unsigned short maxlen) :
 		TFactor(factor), MaxKeyLen(maxlen), ID(id), isLeaf(true), NextFreeKey(0)
 	{
-		Keys = new Word*[2*factor-2];
-		Children = new uint32_t[2*factor-1];
+		Keys = new Word*[MaxNumKeys()]{ nullptr };
+		Children = new uint32_t[MaxNumKeys() + 1]{ 0 };
 	}
 
 	BTreeNode(unsigned int id, unsigned short factor, unsigned short maxlen, std::fstream& f) :
@@ -62,19 +62,20 @@ struct BTreeNode
 	{
 		utils::read_binary(f, NextFreeKey);
 
-		for (auto i = 0; i < 2*factor - 2; i++)
+		for (auto i = 0; i < MaxNumKeys(); i++)
 		{
-			std::string buff;
-			buff.resize(maxlen);
-			f.read(const_cast<char*>(buff.c_str()), maxlen);
+			auto buff = new char[MaxKeyLen];
+			f.read(buff, maxlen);
 
 			uint32_t count;
 			utils::read_binary(f, count);
 
 			Keys[i] = i >= NextFreeKey ? nullptr : new Word(std::string(buff), count);
+
+			delete[] buff;
 		}
 
-		for (auto i = 0; i < 2*factor - 1; i++)
+		for (auto i = 0; i <= MaxNumKeys(); i++)
 		{
 			uint32_t c;
 			utils::read_binary(f, c);
@@ -86,9 +87,9 @@ struct BTreeNode
 
 	~BTreeNode()
 	{
-		for (auto i = 0; i < 2*TFactor - 2; i++)
+		for (auto i = 0; i < MaxNumKeys(); i++)
 		{
-			if(Keys[i] != nullptr)
+			if(i < NextFreeKey)
 			{
 				delete Keys[i];
 				Keys[i] = nullptr;
@@ -102,12 +103,12 @@ struct BTreeNode
 	{
 		utils::write_binary(f, NextFreeKey);
 
-		for (auto i = 0; i < 2*TFactor - 2; i++)
+		for (auto i = 0; i < MaxNumKeys(); i++)
 		{
 			if (Keys[i] == nullptr)
 			{
 				std::string dummy;
-				dummy.resize(MaxKeyLen);
+				dummy.resize(MaxKeyLen, 0x00);
 				f.write(dummy.c_str(), MaxKeyLen);
 
 				unsigned short dummyCount = 0;
@@ -115,21 +116,24 @@ struct BTreeNode
 			}
 			else
 			{
-				Keys[i]->key.resize(MaxKeyLen);
-				auto buff = Keys[i]->key.c_str();
-				f.write(buff, MaxKeyLen);
+				auto k = Keys[i];
+				auto buff = k->key;
+				buff.resize(MaxKeyLen, 0x00);
+				f.write(const_cast<char*>(buff.c_str()), MaxKeyLen);
 
-				utils::write_binary(f, Keys[i]->count);
+				utils::write_binary(f, k->count);
 			}
 		}
 
-		for (auto i = 0; i < 2*TFactor-1; i++)
+		for (auto i = 0; i <= MaxNumKeys(); i++)
 		{
 			utils::write_binary(f, Children[i]);
 		}
 	}
 
-	bool isFull() const	{ return NextFreeKey == 2*TFactor; }
+	bool isFull() const { return NextFreeKey == MaxNumKeys(); }
+
+	size_t MaxNumKeys() const { return 2 * TFactor - 1; }
 };
 
 // A B-Tree in which nodes are kept in clusters on disk
@@ -159,6 +163,10 @@ public:
 	void add(std::string key) override;
 	std::unique_ptr<Word> find(std::string key) override { return findFrom(RootID, key); }
 
+	std::unique_ptr<DocumentStatistics> getDocumentStatistics() override { return documentStatsFrom(RootID); }
+
+	void inOrderPrint() override;
+
 	// Check to see if the tree is empty (the root is null)
 	bool isEmpty() const { return RootID == 0; }
 
@@ -169,6 +177,8 @@ private:
 	uint32_t RootID = 0;
 	uint16_t TFactor;
 	uint16_t MaxKeySize;
+
+	size_t MaxNumKeys() const { return 2 * TFactor - 1; }
 
 	// Allocate a new node. Returns the next available ID and updates the tree metadata
 	unsigned int AllocateNode()
@@ -188,7 +198,34 @@ private:
 	// Skip over the next node in the specified stream
 	void skipReadNode(std::fstream& f) const
 	{
-		f.seekg(MaxKeySize * (TFactor - 1) + 4 * TFactor, std::ios::cur);
+		f.seekg(MaxKeySize * MaxNumKeys() + 4 * (MaxNumKeys() + 1), std::ios::cur);
+	}
+
+	std::unique_ptr<DocumentStatistics> documentStatsFrom(unsigned int id)
+	{
+		if (id == 0) return std::make_unique<DocumentStatistics>(0, 0, 0);
+
+		auto n = load(id);
+
+		size_t total = 0;
+		size_t distinct = 0;
+
+		for(auto i = 0; i < n->NextFreeKey; i++)
+		{
+			total += n->Keys[i]->count;
+			distinct++;
+		}
+
+		size_t subtreeHeight = 0;
+		for(auto i = 0; i <= n->NextFreeKey; i++)
+		{
+			auto subStats = documentStatsFrom(n->Children[i]);
+			subtreeHeight = max(subtreeHeight, subStats->TreeHeight);
+			total += subStats->TotalWords;
+			distinct += subStats->DistinctWords;
+		}
+
+		return std::make_unique<DocumentStatistics>(1 + subtreeHeight, total, distinct);
 	}
 
 	void insertNonFull(std::shared_ptr<BTreeNode> x, std::string k);

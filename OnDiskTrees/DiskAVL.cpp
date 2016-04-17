@@ -279,7 +279,7 @@ void DiskAVL::commit(std::shared_ptr<AVLDiskNode> node, bool includeBase)
 	if (!f.good())
 	{
 		f.close();
-		throw std::runtime_error("Unable to open cluster for read or create: " + TreePath);
+		throw std::runtime_error("Unable to open tree for read or create: " + TreePath);
 	}
 
 	writeCount++;

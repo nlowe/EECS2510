@@ -24,15 +24,18 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-
 #include "stdafx.h"
-#include "DiskAVL.h"
-#include "Options.h"
+
 #include <chrono>
+
+#include "DiskAVL.h"
+#include "DiskBTree.h"
+#include "Options.h"
 
 using namespace std;
 
 DiskAVL* avlTree;
+DiskBTree* btree;
 
 // When benchmarking random strings, they will be made up of these characters
 const string alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -86,6 +89,8 @@ void printHelp()
 	cout << "\t-f, --file\t\tThe input file to test" << endl;
 	cout << "\t-r, --random-count\tThe number of random strings to insert" << endl;
 	cout << "\t-s, --random-size\tThe size of the random strings to insert" << endl;
+	cout << "\t-d, --degree\t\tThe degree of the B-Tree (3 by default)" << endl;
+	cout << "\t-m, --max-key-size\tThe maximum length of words that will be inserted (32 by default)" << endl;
 	cout << "\t-c, --csv\t\tOutput data in CSV Format" << endl;
 	cout << "\t-n, --no-headers\tDon't include headers in CSV. Implies -c" << endl;
 	cout << "\t-k, --keep\t\tDon't delete existing trees before running the benchmarks" << endl;
@@ -130,43 +135,53 @@ int runFileBenchmarks(Options options)
 	if(!options.keepExisting)
 	{
 		remove("test.avl");
+		remove("test.btree");
 	}
 
 	// initialize the trees
 	avlTree = new DiskAVL("test.avl");
+	btree = new DiskBTree("test.btree", options.TFactor, options.MaxKeySize);
 
 	// Run the benchmarks, recording the time
 	auto overhead = benchmarkFile(nullptr, path);
-	auto avlTime = benchmarkFile(avlTree, path);
+	auto avlTime = 0.0; // benchmarkFile(avlTree, path);
+	auto btreeTime = benchmarkFile(btree, path);
 
-	auto avlStats = avlTree->getDocumentStatistics();
+	//auto avlStats = avlTree->getDocumentStatistics();
+	auto btreeStats = btree->getDocumentStatistics();
 
 	// Print the results
 	if (options.csvMode)
 	{
 		if (!options.noHeaders)
 		{
-			cout << "File,Overhead,ATime,AHeight,ADist,ATotal,AComp,ARef,ABal,ARead,AWrite" << endl;
+			cout << "File,Overhead,ATime,AHeight,ADist,ATotal,AComp,ARef,ABal,ARead,AWrite,BTime,BHeight,BDist,BTotal,BComp,BRef,BRead,BWrite" << endl;
 		}
 		cout << '"' << path << "\"," << overhead << ',';
-		cout << avlTime << ',' << avlStats->TreeHeight << ',' << avlStats->DistinctWords << ',' << avlStats->TotalWords << ',' << avlTree->getComparisonCount() << ',' << avlTree->getReferenceChanges() << ',' << avlTree->getBalanceFactorChangeCount() << ',' << avlTree->GetReadCount() << ',' << avlTree->GetWriteCount();
+		//cout << avlTime << ',' << avlStats->TreeHeight << ',' << avlStats->DistinctWords << ',' << avlStats->TotalWords << ',' << avlTree->getComparisonCount() << ',' << avlTree->getReferenceChanges() << ',' << avlTree->getBalanceFactorChangeCount() << ',' << avlTree->GetReadCount() << ',' << avlTree->GetWriteCount();
+		cout << btreeTime << ',' << btreeStats->TreeHeight << ',' << btreeStats->DistinctWords << ',' << btreeStats->TotalWords << ',' << btree->getComparisonCount() << ',' << btree->getReferenceChanges() << ',' << btree->GetReadCount() << ',' << btree->GetWriteCount() << endl;
 	}
 	else
 	{
-		cout << "Total Runtime for file \"" << path << "\": " << (overhead + avlTime) << "ms" << endl;
+		cout << "Total Runtime for file \"" << path << "\": " << (overhead + avlTime + btreeTime) << "ms" << endl;
 		cout << "Overhead: " << overhead << "ms" << endl;
-		cout << "AVL: Height=" << avlStats->TreeHeight << ", DistinctWords=" << avlStats->DistinctWords << ", TotalWords=" << avlStats->TotalWords << ", Time=" << avlTime << "ms, Comparisons=" << avlTree->getComparisonCount() << ", ReferenceChanges=" << avlTree->getReferenceChanges() << ", BalanceFactorChanges=" << avlTree->getBalanceFactorChangeCount() << ", Reads=" << avlTree->GetReadCount() << ", Writes=" << avlTree->GetWriteCount() << endl;
+		//cout << "AVL: Height=" << avlStats->TreeHeight << ", DistinctWords=" << avlStats->DistinctWords << ", TotalWords=" << avlStats->TotalWords << ", Time=" << avlTime << "ms, Comparisons=" << avlTree->getComparisonCount() << ", ReferenceChanges=" << avlTree->getReferenceChanges() << ", BalanceFactorChanges=" << avlTree->getBalanceFactorChangeCount() << ", Reads=" << avlTree->GetReadCount() << ", Writes=" << avlTree->GetWriteCount() << endl;
+		cout << "BTree: Height=" << btreeStats->TreeHeight << ", DistinctWords=" << btreeStats->DistinctWords << ", TotalWords=" << btreeStats->TotalWords << ", Time=" << btreeTime << "ms, Comparisons=" << btree->getComparisonCount() << ", ReferenceChanges=" << btree->getReferenceChanges() << ", Reads=" << btree->GetReadCount() << ", Writes=" << btree->GetWriteCount() << endl;
 
 		if(!options.quiet)
 		{
 			cout << "AVL In Order:" << endl;
-			avlTree->inOrderPrint();
-			cout << "--------------------------" << endl << endl;	
+			//avlTree->inOrderPrint();
+			cout << "--------------------------" << endl << endl;
+			cout << "B-Tree In Order:" << endl;
+			btree->inOrderPrint();
+			cout << "--------------------------" << endl << endl;
 		}
 	}
 
 	// Free the trees
 	delete avlTree;
+	delete btree;
 
 	return 0;
 }
@@ -181,31 +196,40 @@ int runRandomBenchmarks(Options options)
 
 	// Initialize the trees
 	avlTree = new DiskAVL("test.avl");
+	btree = new DiskBTree("test.btree", options.TFactor, options.MaxKeySize);
 
 	// Run the benchmarks and record the times
 	auto avlTime = benchmarkRandom(avlTree, options.RandomCount, options.RandomSize);
+	auto btreeTime = benchmarkRandom(btree, options.RandomCount, options.RandomSize);
 
 	auto avlStats = avlTree->getDocumentStatistics();
+	auto btreeStats = btree->getDocumentStatistics();
+
 	// Print the results
 	if(options.csvMode)
 	{
 		if(!options.noHeaders)
 		{
-			cout << "Count,Size,ATime,AHeight,ADist,ATotal,AComp,ARef,ABal" << endl;
+			cout << "Count,Size,ATime,AHeight,ADist,ATotal,AComp,ARef,ABal,ARead,AWrite,BTime,BHeight,BDist,BTotal,BComp,BRef,BRead,BWrite" << endl;
 		}
 		cout << options.RandomCount << ',' << options.RandomSize << ',';
 		cout << avlTime << ',' << avlStats->TreeHeight << ',' << avlStats->DistinctWords << ',' << avlStats->TotalWords << ',' << avlTree->getComparisonCount() << ',' << avlTree->getReferenceChanges() << ',' << avlTree->getBalanceFactorChangeCount() << ',' << avlTree->GetReadCount() << ',' << avlTree->GetWriteCount();
+		cout << btreeTime << ',' << btreeStats->TreeHeight << ',' << btreeStats->DistinctWords << ',' << btreeStats->TotalWords << ',' << btree->getComparisonCount() << ',' << btree->getReferenceChanges() << ',' << btree->GetReadCount() << ',' << btree->GetWriteCount() << endl;
 	}
 	else
 	{
 		cout << "Total Runtime for " << options.RandomCount << " random strings of length " << options.RandomSize << ": " << (avlTime) << "ms" << endl;
 		cout << "AVL: Height=" << avlStats->TreeHeight << ", DistinctWords=" << avlStats->DistinctWords << ", TotalWords=" << avlStats->TotalWords << ", Time=" << avlTime << "ms, Comparisons=" << avlTree->getComparisonCount() << ", ReferenceChanges=" << avlTree->getReferenceChanges() << ", BalanceFactorChanges=" << avlTree->getBalanceFactorChangeCount() << ", Reads=" << avlTree->GetReadCount() << ", Writes=" << avlTree->GetWriteCount() << endl;
+		cout << "BTree: Height=" << btreeStats->TreeHeight << ", DistinctWords=" << btreeStats->DistinctWords << ", TotalWords=" << btreeStats->TotalWords << ", Time=" << btreeTime << "ms, Comparisons=" << btree->getComparisonCount() << ", ReferenceChanges=" << btree->getReferenceChanges() << ", Reads=" << btree->GetReadCount() << ", Writes=" << btree->GetWriteCount() << endl;
 
 		if(!options.quiet)
 		{
 			cout << "AVL In Order:" << endl;
 			avlTree->inOrderPrint();
-			cout << "--------------------------" << endl << endl;	
+			cout << "--------------------------" << endl << endl;
+			cout << "B-Tree In Order:" << endl;
+			btree->inOrderPrint();
+			cout << "--------------------------" << endl << endl;
 		}
 	}
 
@@ -218,7 +242,7 @@ int runRandomBenchmarks(Options options)
 // Run a file benchmark against the specified tree implementation and file
 double benchmarkFile(IWordCounter* tree, string path)
 {
-	auto start = std::chrono::high_resolution_clock::now();
+	auto start = chrono::high_resolution_clock::now();
 
 	ifstream reader;
 

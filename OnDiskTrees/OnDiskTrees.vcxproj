@@ -147,6 +147,7 @@
   <ItemGroup>
     <ClInclude Include="DiskAVL.h" />
     <ClInclude Include="DiskBTree.h" />
+    <ClInclude Include="DocumentStatistics.h" />
     <ClInclude Include="IDiskStatisticsTracker.h" />
     <ClInclude Include="IPerformanceStatsTracker.h" />
     <ClInclude Include="IWordCounter.h" />

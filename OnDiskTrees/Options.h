@@ -37,6 +37,10 @@ struct Options
 	size_t RandomCount = 0;
 	// The size of random words to insert
 	size_t RandomSize = 0;
+	// The T-Factor (Degree) of the B-Tree
+	uint16_t TFactor = 3;
+	// The maximum key size for keys that will be inserted into the b-tree
+	uint16_t MaxKeySize = 32;
 
 	// Whether or not the help menu was requested
 	bool help = false;
@@ -145,6 +149,65 @@ struct Options
 			else if(arg == "-q" || arg == "--quiet")
 			{
 				quiet = true;
+			}
+			else if(arg == "-d" || arg == "--degree")
+			{
+				if (i < argc - 1)
+				{
+					try
+					{
+						TFactor = static_cast<uint16_t>(std::stoul(argv[++i]));
+						if(TFactor < 2)
+						{
+							errors = true;
+							errorMessage += "\t* ";
+							errorMessage += arg;
+							errorMessage += ": B-Tree degree must be at least 2";
+						}
+					}
+					catch (std::exception ex)
+					{
+						errors = true;
+						errorMessage += "\t* ";
+						errorMessage += arg;
+						errorMessage += ": Unable to parse argument (";
+						errorMessage += ex.what();
+						errorMessage += ")";
+					}
+				}
+				else
+				{
+					errors = true;
+					errorMessage += "\t* ";
+					errorMessage += arg;
+					errorMessage += ": Not enough parameters (must be <string>)\n";
+				}
+			}
+			else if(arg == "-m" || arg == "--max-key-size")
+			{
+				if (i < argc - 1)
+				{
+					try
+					{
+						MaxKeySize = static_cast<uint16_t>(std::stoul(argv[++i]));
+					}
+					catch (std::exception ex)
+					{
+						errors = true;
+						errorMessage += "\t* ";
+						errorMessage += arg;
+						errorMessage += ": Unable to parse argument (";
+						errorMessage += ex.what();
+						errorMessage += ")";
+					}
+				}
+				else
+				{
+					errors = true;
+					errorMessage += "\t* ";
+					errorMessage += arg;
+					errorMessage += ": Not enough parameters (must be <string>)\n";
+				}
 			}
 			else
 			{
