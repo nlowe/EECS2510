@@ -37,30 +37,32 @@
 
 struct BTreeNode
 {
-	const unsigned short BranchingFactor;
+	const unsigned short TFactor;
 	const unsigned short MaxKeyLen;
 
 	const unsigned int ID;
-	unsigned int ParentID;
 	bool isLeaf;
 
+	// N in the slides
 	uint32_t NextFreeKey = 0;
+	// Actually an array of Word pointers
 	Word** Keys;
+	// Actually an array of uint32_t
 	uint32_t* Children;
 
-	BTreeNode(unsigned int parent, unsigned int id, unsigned short factor, unsigned short maxlen) :
-		BranchingFactor(factor), MaxKeyLen(maxlen), ID(id), ParentID(parent), isLeaf(true), NextFreeKey(0)
+	BTreeNode(unsigned int id, unsigned short factor, unsigned short maxlen) :
+		TFactor(factor), MaxKeyLen(maxlen), ID(id), isLeaf(true), NextFreeKey(0)
 	{
-		Keys = new Word*[factor-1];
-		Children = new uint32_t[factor];
+		Keys = new Word*[2*factor-2];
+		Children = new uint32_t[2*factor-1];
 	}
 
-	BTreeNode(unsigned int parent, unsigned int id, unsigned short factor, unsigned short maxlen, std::fstream& f) :
-		BTreeNode(parent, id, factor, maxlen)
+	BTreeNode(unsigned int id, unsigned short factor, unsigned short maxlen, std::fstream& f) :
+		BTreeNode(id, factor, maxlen)
 	{
 		utils::read_binary(f, NextFreeKey);
 
-		for (auto i = 0; i < factor - 1; i++)
+		for (auto i = 0; i < 2*factor - 2; i++)
 		{
 			std::string buff;
 			buff.resize(maxlen);
@@ -72,7 +74,7 @@ struct BTreeNode
 			Keys[i] = i >= NextFreeKey ? nullptr : new Word(std::string(buff), count);
 		}
 
-		for (auto i = 0; i < factor; i++)
+		for (auto i = 0; i < 2*factor - 1; i++)
 		{
 			uint32_t c;
 			utils::read_binary(f, c);
@@ -84,7 +86,7 @@ struct BTreeNode
 
 	~BTreeNode()
 	{
-		for (auto i = 0; i < BranchingFactor - 1; i++)
+		for (auto i = 0; i < 2*TFactor - 2; i++)
 		{
 			if(Keys[i] != nullptr)
 			{
@@ -100,7 +102,7 @@ struct BTreeNode
 	{
 		utils::write_binary(f, NextFreeKey);
 
-		for (auto i = 0; i < BranchingFactor - 1; i++)
+		for (auto i = 0; i < 2*TFactor - 2; i++)
 		{
 			if (Keys[i] == nullptr)
 			{
@@ -121,11 +123,13 @@ struct BTreeNode
 			}
 		}
 
-		for (auto i = 0; i < BranchingFactor; i++)
+		for (auto i = 0; i < 2*TFactor-1; i++)
 		{
 			utils::write_binary(f, Children[i]);
 		}
 	}
+
+	bool isFull() const	{ return NextFreeKey == 2*TFactor; }
 };
 
 // A B-Tree in which nodes are kept in clusters on disk
@@ -136,11 +140,11 @@ struct BTreeNode
 // 
 // 4 bytes: unsigned int containing the next node id
 // 4 bytes: the ID of the root node, 0 if none
-// 2 bytes: unsigned short containing the branching factor of the tree
+// 2 bytes: unsigned short containing the T-factor of the tree
 // 2 bytes: unsigned short containing the maximum length in bytes of all keys
 // variable: for each node in the tree
-//     maximum key length * (branching factor - 1) bytes: all keys in the node. If a key is not used, it is filled with 0x00
-//     4 bytes * branching factor: array of unsigned integers containing the ID of the child nodes
+//     maximum key length * (2*T-factor - 2) bytes: all keys in the node. If a key is not used, it is filled with 0x00
+//     4 bytes * (2*T-Factor - 1): array of unsigned integers containing the ID of the child nodes
 //
 // This structure is not thread-safe for inserts / writes
 class DiskBTree : public IWordCounter
@@ -153,7 +157,7 @@ public:
 	// Returns:
 	//		A pointer to the word represented by the key
 	void add(std::string key) override;
-	std::unique_ptr<Word> find(std::string key) override;
+	std::unique_ptr<Word> find(std::string key) override { return findFrom(RootID, key); }
 
 	// Check to see if the tree is empty (the root is null)
 	bool isEmpty() const { return RootID == 0; }
@@ -163,10 +167,18 @@ private:
 
 	uint32_t NextNode = 1;
 	uint32_t RootID = 0;
-	uint16_t BranchingFactor;
+	uint16_t TFactor;
 	uint16_t MaxKeySize;
 
-	std::shared_ptr<BTreeNode> load(uint32_t parent, uint32_t id);
+	// Allocate a new node. Returns the next available ID and updates the tree metadata
+	unsigned int AllocateNode()
+	{
+		return NextNode++;
+	}
+
+	std::unique_ptr<Word> findFrom(uint32_t id, std::string key);
+
+	std::shared_ptr<BTreeNode> load(uint32_t id);
 
 	void commit(std::shared_ptr<BTreeNode> node, bool includeBase = false);
 	
@@ -176,8 +188,12 @@ private:
 	// Skip over the next node in the specified stream
 	void skipReadNode(std::fstream& f) const
 	{
-		f.seekg(MaxKeySize * (BranchingFactor - 1) + 4 * BranchingFactor, std::ios::cur);
+		f.seekg(MaxKeySize * (TFactor - 1) + 4 * TFactor, std::ios::cur);
 	}
+
+	void insertNonFull(std::shared_ptr<BTreeNode> x, std::string k);
+	void split(std::shared_ptr<BTreeNode> x, uint16_t idx);
+	void split(std::shared_ptr<BTreeNode> x, uint16_t idx, std::shared_ptr<BTreeNode> y);
 
 };
 
