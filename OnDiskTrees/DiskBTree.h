@@ -44,94 +44,105 @@ struct BTreeNode
 	bool isLeaf;
 
 	// N-1 in the slides, but we're zero-indexed so we should be fine
-	uint32_t NextFreeKey = 0;
+	uint32_t KeyCount = 0;
 	// Actually an array of Word pointers
 	Word** Keys;
 	// Actually an array of uint32_t
-	uint32_t* Children;
+	BTreeNode** Children;
 
 	BTreeNode(unsigned int id, unsigned short factor, unsigned short maxlen) :
-		TFactor(factor), MaxKeyLen(maxlen), ID(id), isLeaf(true), NextFreeKey(0)
+		TFactor(factor), MaxKeyLen(maxlen), ID(id), isLeaf(true), KeyCount(0)
 	{
 		Keys = new Word*[MaxNumKeys()]{ nullptr };
-		Children = new uint32_t[MaxNumKeys() + 1]{ 0 };
+		Children = new BTreeNode*[MaxNumKeys() + 1]{ nullptr };
 	}
 
-	BTreeNode(unsigned int id, unsigned short factor, unsigned short maxlen, std::fstream& f) :
-		BTreeNode(id, factor, maxlen)
-	{
-		utils::read_binary(f, NextFreeKey);
-
-		for (auto i = 0; i < MaxNumKeys(); i++)
-		{
-			auto buff = new char[MaxKeyLen];
-			f.read(buff, maxlen);
-
-			uint32_t count;
-			utils::read_binary(f, count);
-
-			Keys[i] = i >= NextFreeKey ? nullptr : new Word(std::string(buff), count);
-
-			delete[] buff;
-		}
-
-		for (auto i = 0; i <= MaxNumKeys(); i++)
-		{
-			uint32_t c;
-			utils::read_binary(f, c);
-
-			Children[i] = c;
-			if (c != 0) isLeaf = false;
-		}
-	}
+//	BTreeNode(unsigned int id, unsigned short factor, unsigned short maxlen, std::fstream& f) :
+//		BTreeNode(id, factor, maxlen)
+//	{
+//		utils::read_binary(f, KeyCount);
+//
+//		for (auto i = 0; i < MaxNumKeys(); i++)
+//		{
+//			auto buff = new char[MaxKeyLen];
+//			f.read(buff, maxlen);
+//
+//			uint32_t count;
+//			utils::read_binary(f, count);
+//
+//			Keys[i] = i >= KeyCount ? nullptr : new Word(std::string(buff), count);
+//
+//			delete[] buff;
+//		}
+//
+//		for (auto i = 0; i <= MaxNumKeys(); i++)
+//		{
+//			uint32_t c;
+//			utils::read_binary(f, c);
+//
+//			Children[i] = c;
+//			if (c != 0) isLeaf = false;
+//		}
+//	}
 
 	~BTreeNode()
 	{
-		for (auto i = 0; i < MaxNumKeys(); i++)
+		for(auto i = 0; i < MaxNumKeys(); i++)
 		{
-			if(i < NextFreeKey)
+			if (Keys[i] != nullptr)
 			{
 				delete Keys[i];
 				Keys[i] = nullptr;
 			}
 		}
+
+		for(auto i = 0; i < MaxNumKeys() + 1; i++)
+		{
+			if(Children[i] != nullptr)
+			{
+				delete Children[i];
+				Children[i] = nullptr;
+			}
+		}
+
 		delete[] Keys;
 		delete[] Children;
 	}
 
-	void write(std::fstream& f) const
-	{
-		utils::write_binary(f, NextFreeKey);
+//	void write(std::fstream& f) const
+//	{
+//		utils::write_binary(f, KeyCount);
+//
+//		for (auto i = 0; i < MaxNumKeys(); i++)
+//		{
+//			if (Keys[i] == nullptr)
+//			{
+//				std::string dummy;
+//				dummy.resize(MaxKeyLen, 0x00);
+//				f.write(dummy.c_str(), MaxKeyLen);
+//
+//				unsigned short dummyCount = 0;
+//				utils::write_binary(f, dummyCount);
+//			}
+//			else
+//			{
+//				auto k = Keys[i];
+//				auto buff = k->key;
+//				buff.resize(MaxKeyLen, 0x00);
+//				f.write(const_cast<char*>(buff.c_str()), MaxKeyLen);
+//
+//				utils::write_binary(f, k->count);
+//			}
+//		}
+//
+//		for (auto i = 0; i <= MaxNumKeys(); i++)
+//		{
+//			utils::write_binary(f, Children[i]);
+//		}
+//	}
 
-		for (auto i = 0; i < MaxNumKeys(); i++)
-		{
-			if (Keys[i] == nullptr)
-			{
-				std::string dummy;
-				dummy.resize(MaxKeyLen, 0x00);
-				f.write(dummy.c_str(), MaxKeyLen);
-
-				unsigned short dummyCount = 0;
-				utils::write_binary(f, dummyCount);
-			}
-			else
-			{
-				auto k = Keys[i];
-				auto buff = k->key;
-				buff.resize(MaxKeyLen, 0x00);
-				f.write(const_cast<char*>(buff.c_str()), MaxKeyLen);
-
-				utils::write_binary(f, k->count);
-			}
-		}
-
-		for (auto i = 0; i <= MaxNumKeys(); i++)
-		{
-			utils::write_binary(f, Children[i]);
-		}
-	}
-
-	bool isFull() const { return NextFreeKey == MaxNumKeys(); }
+	bool isFull() const { return KeyCount == MaxNumKeys(); }
+	bool isEmpty() const { return KeyCount == 0; }
 
 	size_t MaxNumKeys() const { return 2 * TFactor - 1; }
 };
@@ -168,13 +179,13 @@ public:
 	void inOrderPrint() override;
 
 	// Check to see if the tree is empty (the root is null)
-	bool isEmpty() const { return RootID == 0; }
+	bool isEmpty() const { return RootID == nullptr; }
 
 private:
 	std::string TreePath = "";
 
 	uint32_t NextNode = 1;
-	uint32_t RootID = 0;
+	BTreeNode* RootID = nullptr;
 	uint16_t TFactor;
 	uint16_t MaxKeySize;
 
@@ -186,38 +197,37 @@ private:
 		return NextNode++;
 	}
 
-	std::unique_ptr<Word> findFrom(uint32_t id, std::string key);
+	std::unique_ptr<Word> findFrom(BTreeNode* node, std::string key);
 
-	std::shared_ptr<BTreeNode> load(uint32_t id);
+//	std::shared_ptr<BTreeNode> load(uint32_t id);
+//
+//	void commit(std::shared_ptr<BTreeNode> node, bool includeBase = false);
+//	
+//	// Write the tree metadata to disk
+//	void commitBase(bool append=false);
+//
+//	// Skip over the next node in the specified stream
+//	void skipReadNode(std::fstream& f) const
+//	{
+//		f.seekg(MaxKeySize * MaxNumKeys() + 4 * (MaxNumKeys() + 1), std::ios::cur);
+//	}
 
-	void commit(std::shared_ptr<BTreeNode> node, bool includeBase = false);
-	
-	// Write the tree metadata to disk
-	void commitBase(bool append=false);
-
-	// Skip over the next node in the specified stream
-	void skipReadNode(std::fstream& f) const
+	std::unique_ptr<DocumentStatistics> documentStatsFrom(BTreeNode* n)
 	{
-		f.seekg(MaxKeySize * MaxNumKeys() + 4 * (MaxNumKeys() + 1), std::ios::cur);
-	}
+		if (n == nullptr) return std::make_unique<DocumentStatistics>(0, 0, 0);
 
-	std::unique_ptr<DocumentStatistics> documentStatsFrom(unsigned int id)
-	{
-		if (id == 0) return std::make_unique<DocumentStatistics>(0, 0, 0);
-
-		auto n = load(id);
+		//auto n = load(id);
 
 		size_t total = 0;
-		size_t distinct = 0;
+		size_t distinct = n->KeyCount;
 
-		for(auto i = 0; i < n->NextFreeKey; i++)
+		for(auto i = 0; i < n->KeyCount; i++)
 		{
 			total += n->Keys[i]->count;
-			distinct++;
 		}
 
 		size_t subtreeHeight = 0;
-		for(auto i = 0; i <= n->NextFreeKey; i++)
+		for(auto i = 0; i <= n->KeyCount; i++)
 		{
 			auto subStats = documentStatsFrom(n->Children[i]);
 			subtreeHeight = max(subtreeHeight, subStats->TreeHeight);
@@ -228,9 +238,9 @@ private:
 		return std::make_unique<DocumentStatistics>(1 + subtreeHeight, total, distinct);
 	}
 
-	void insertNonFull(std::shared_ptr<BTreeNode> x, std::string k);
-	void split(std::shared_ptr<BTreeNode> x, uint16_t idx);
-	void split(std::shared_ptr<BTreeNode> x, uint16_t idx, std::shared_ptr<BTreeNode> y);
+	void insertNonFull(BTreeNode* x, std::string k);
+	void split(BTreeNode* x, uint16_t idx);
+	void split(BTreeNode* x, uint16_t idx, BTreeNode* y);
 
 };
 
