@@ -96,9 +96,16 @@ void DiskBTree::add(std::string key)
 	}
 }
 
-void DiskBTree::inOrderPrint()
+void DiskBTree::inOrderPrintFrom(BTreeNode* node) const
 {
-	throw std::runtime_error("Not Implemented");
+	if (node == nullptr) return;
+
+	for(auto i=0; i < node->KeyCount; i++)
+	{
+		inOrderPrintFrom(node->Children[i]);
+		std::cout << node->Keys[i]->key << ": " << node->Keys[i]->count << std::endl;
+	}
+	inOrderPrintFrom(node->Children[node->KeyCount]);
 }
 
 std::unique_ptr<Word> DiskBTree::findFrom(BTreeNode* x, std::string key)
@@ -230,11 +237,14 @@ void DiskBTree::insertNonFull(BTreeNode* x, std::string k)
 	// See if we're inserting a duplicate
 	for(auto j = 0; j <= i; j++)
 	{
-		if(k.compare(x->Keys[j]->key) == 0)
+		auto res = k.compare(x->Keys[j]->key);
+		if(res == 0)
 		{
 			x->Keys[j]->count++;
 			return;
 		}
+
+		if (res < 0) break;
 	}
 
 	if(x->isLeaf)
@@ -252,7 +262,7 @@ void DiskBTree::insertNonFull(BTreeNode* x, std::string k)
 	}
 	else
 	{
-		while(i > 0 && k.compare(x->Keys[i]->key) < 0)
+		while(i >= 0 && k.compare(x->Keys[i]->key) < 0)
 		{
 			i--;
 			comparisons++;
@@ -261,8 +271,22 @@ void DiskBTree::insertNonFull(BTreeNode* x, std::string k)
 
 //		auto y = load(x->Children[i]);
 		auto y = x->Children[i];
+
 		if (y->isFull())
 		{
+			// See if we're inserting a duplicate first, since we don't have to split then
+			for(auto j = 0; j <= y->KeyCount - 1; j++)
+			{
+				auto res = k.compare(y->Keys[j]->key);
+				if(res == 0)
+				{
+					y->Keys[j]->count++;
+					return;
+				}
+				
+				if (res < 0) break;
+			}
+
 			split(x, i, y);
 			comparisons++;
 			if(k.compare(x->Keys[i]->key) > 0)

@@ -176,7 +176,7 @@ public:
 
 	std::unique_ptr<DocumentStatistics> getDocumentStatistics() override { return documentStatsFrom(RootID); }
 
-	void inOrderPrint() override;
+	void inOrderPrint() override { return inOrderPrintFrom(RootID); }
 
 	// Check to see if the tree is empty (the root is null)
 	bool isEmpty() const { return RootID == nullptr; }
@@ -196,6 +196,8 @@ private:
 	{
 		return NextNode++;
 	}
+
+	void inOrderPrintFrom(BTreeNode* node) const;
 
 	std::unique_ptr<Word> findFrom(BTreeNode* node, std::string key);
 
