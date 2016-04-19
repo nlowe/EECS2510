@@ -33,6 +33,7 @@
 #include "Word.h"
 #include "DocumentStatistics.h"
 
+// An interface for an abstract, disk-based word counter
 class IWordCounter : public IDiskStatisticsTracker, public IPerformanceStatsTracker
 {
 public:
@@ -40,8 +41,18 @@ public:
 	{
 	}
 
+	// Add the specified word to the counter
 	virtual void add(std::string word) = 0;
+
+	// Search for the word identified by the specified key, and if available return
+	// the number of times the word has been encountered
 	virtual std::unique_ptr<Word> find(std::string key) = 0;
+	
+	// Print the words and their occurrance counts in alphabetical order
 	virtual void inOrderPrint() = 0;
+	
+	// Get statistics about the tree, such as its height and the number of total and distinct words
+	// Returns:
+	//     A unique pointer to a DocumentStatistics object
 	virtual std::unique_ptr<DocumentStatistics> getDocumentStatistics() = 0;
 };

@@ -45,10 +45,15 @@
 // 4 bytes:  unsigned integer containing the ID of the right child, 0 if none
 struct AVLDiskNode
 {
+	// The ID of the node
 	unsigned int ID;
+	// The word payload the node contains
 	Word* Payload;
+	// The balance factor of the node (-1, 0, or 1)
 	char BalanceFactor;
+	// The ID of the left child
 	uint32_t LeftID;
+	// The ID of the right child
 	uint32_t RightID;
 
 	explicit AVLDiskNode(int id, Word* payload) : ID(id), Payload(payload), BalanceFactor(0), LeftID(0), RightID(0) {}
@@ -121,9 +126,11 @@ public:
 	~DiskAVL();
 
 	// Adds the word to the tree. If the word already exists, its occurrance count is incremeneted
-	// Returns:
-	//		A pointer to the word represented by the key
 	void add(std::string key) override;
+
+	// Find the given key in the tree
+	// Returns:
+	//     A unique pointer to a word represented by the specified key, or a nullptr if not found
 	std::unique_ptr<Word> find(std::string key) override;
 
 	// Check to see if the tree is empty (the root is null)
@@ -132,17 +139,24 @@ public:
 	// Returns: The number of times the balance factor of any node was updated
 	size_t getBalanceFactorChangeCount() const { return balanceFactorChanges;  }
 
+	// Get statistics about the tree, such as its height and the number of total and distinct words
+	// Returns:
+	//     A unique pointer to a DocumentStatistics object
 	std::unique_ptr<DocumentStatistics> getDocumentStatistics() override
 	{
 		return documentStatsFrom(RootID);
 	}
 
+	// Performs an in-order traversal on the tree, printing out the keys and their occurrance counts
 	void inOrderPrint() override { inOrderPrintFrom(RootID); }
 private:
 	size_t balanceFactorChanges = 0;
 
+	// The path on disk where the tree resides.
 	std::string    TreePath = "";
+	// The ID of the next node to be allocated
 	unsigned int   NextNodeID = 1;
+	// The ID of the root node
 	unsigned int   RootID     = 0;
 
 	// Allocate a new node. Returns the next available ID and updates the tree metadata
@@ -153,9 +167,9 @@ private:
 
 	// Attempt to load the specified node from disk. A runtime
 	// exception is thrown if the node could not be read
-	std::shared_ptr<AVLDiskNode> loadNode(unsigned int id);
+	std::shared_ptr<AVLDiskNode> load(unsigned int id);
 
-	// Write the specified node to a cluster on disk
+	// Write the specified node (and optinally the tree metadata) to disk
 	void commit(std::shared_ptr<AVLDiskNode> node, bool includeBase = false);
 	// Write the tree metadata to disk
 	void commitBase(bool append=false);
@@ -172,21 +186,27 @@ private:
 		f.seekg(offset, std::ios::cur);
 	}
 
+	// Performs an in-order traversal on the sub-tree from the specified node,
+	// printing out the keys and their occurrance counts
 	void inOrderPrintFrom(unsigned int id)
 	{
 		if (id == 0) return;
 
-		auto node = loadNode(id);
+		auto node = load(id);
 		inOrderPrintFrom(node->LeftID);
 		std::cout << node->Payload->key << ": " << node->Payload->count << " (node " << node->ID << ")" << std::endl;
 		inOrderPrintFrom(node->RightID);
 	}
 
+	// Get statistics about the sub-tree from the specified node, such as its
+	// height and the number of total and distinct words
+	// Returns:
+	//     A unique pointer to a DocumentStatistics object
 	std::unique_ptr<DocumentStatistics> documentStatsFrom(unsigned int id)
 	{
 		if (id == 0) return std::make_unique<DocumentStatistics>(0, 0, 0);
 
-		auto n = loadNode(id);
+		auto n = load(id);
 		auto leftStats = documentStatsFrom(n->LeftID);
 		auto rightStats = documentStatsFrom(n->RightID);
 

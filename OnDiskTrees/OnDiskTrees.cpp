@@ -112,12 +112,17 @@ void printHelp()
 
 	cout << "If CSV mode is not specified, an in-order traversal will also be performed on each" << endl;
 	cout << "tree implementation, listing the words and the number of times they each occur" << endl;
+
+	cout << endl;
+
+	cout << "At the end of each benchmark, all counters will perform an in-order print of the words" << endl;
+	cout << "and their occurrance counts. To suppress this, specify the -q flag" << endl;
 }
 
 // Run a file benchmark with the specified options
 int runFileBenchmarks(Options options)
 {
-	string path = options.TestFilePath;
+	auto path = options.TestFilePath;
 
 	ifstream reader;
 
@@ -134,6 +139,7 @@ int runFileBenchmarks(Options options)
 
 	if(!options.keepExisting)
 	{
+		// Clean up from the last run
 		remove("test.avl");
 		remove("test.btree");
 	}
@@ -191,6 +197,7 @@ int runRandomBenchmarks(Options options)
 {
 	if(!options.keepExisting)
 	{
+		// Clean up from the last run
 		remove("test.avl");
 		remove("test.btree");
 	}

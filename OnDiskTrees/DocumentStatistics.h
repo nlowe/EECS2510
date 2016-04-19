@@ -27,11 +27,15 @@
 
 #pragma once
 
+// A structure representing statistics about a given document
 struct DocumentStatistics
 {
 	DocumentStatistics(size_t height, size_t total, size_t distinct) : TreeHeight(height), TotalWords(total), DistinctWords(distinct) {}
 
+	// The height of the tree used to count words in this document
 	const size_t TreeHeight;
+	// The total number of words encountered while parsing the document
 	const size_t TotalWords;
+	// The total number of distinct words encountered while parsing the document
 	const size_t DistinctWords;
 };

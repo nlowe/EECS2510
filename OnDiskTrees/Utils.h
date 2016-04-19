@@ -29,6 +29,7 @@
 #include <string>
 #include <Shlobj.h>
 
+// Utility Functions
 namespace utils
 {
 #ifndef PATH_SEPERATOR
@@ -39,6 +40,7 @@ namespace utils
 #	endif
 #endif
 
+	// Join the specified paths together to form a new path
 	inline std::string join(std::string path, std::string child)
 	{
 		auto result = path;
@@ -60,12 +62,15 @@ namespace utils
 		return result;
 	}
 
+	// Returns: the parent of the specified path
 	inline std::string parent(std::string path)
 	{
 		auto idx = path.find_last_of(PATH_SEPERATOR);
 		return idx == std::string::npos ? path : path.substr(0, idx);
 	}
-
+	
+	// Ensure that all directories needed to represent the specified path are created
+	// This is not cross-platform, as it uses the WIN32 api's
 	inline bool createDirectories(std::string path)
 	{
 		#ifndef _WIN32

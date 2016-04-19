@@ -44,6 +44,9 @@ DiskBTree::DiskBTree(std::string path, uint16_t branchingFactor, uint16_t maxKey
 		// Ensure the directory the tree should be placed in exists
 		utils::createDirectories(utils::parent(path));
 
+		// We have to commit the base first instead of with the first node
+		// since there is no way to distinguish between the file not existing
+		// and an IO error
 		commitBase();
 	
 		// Probably a new tree, try to commit the empty metadata
@@ -71,7 +74,7 @@ DiskBTree::~DiskBTree()
 {
 }
 
-
+// Adds the word to the tree. If the word already exists, its occurrance count is incremeneted
 void DiskBTree::add(std::string key)
 {
 	if (key.length() > MaxKeySize) throw std::runtime_error("Key to large. Try again with a larger max key size");
@@ -81,6 +84,7 @@ void DiskBTree::add(std::string key)
 
 	if(r->isFull())
 	{
+		// If the root node is full, we have to push a new root out to the top
 		auto s = new BTreeNode(AllocateNode(), TFactor, MaxKeySize);
 
 		RootID = s->ID;
@@ -100,6 +104,8 @@ void DiskBTree::add(std::string key)
 	delete r;
 }
 
+// Performs an in-order traversal on the sub-tree from the specified node,
+// printing out the keys and their occurrance counts
 void DiskBTree::inOrderPrintFrom(uint32_t id)
 {
 	if (id == 0) return;
@@ -116,6 +122,7 @@ void DiskBTree::inOrderPrintFrom(uint32_t id)
 	delete node;
 }
 
+// Search the specified subtree for the specified key
 std::unique_ptr<Word> DiskBTree::findFrom(uint32_t id, std::string key)
 {
 	if (id == 0) return nullptr;
@@ -146,6 +153,8 @@ std::unique_ptr<Word> DiskBTree::findFrom(uint32_t id, std::string key)
 	return res;
 }
 
+// Attempt to load the specified node from disk. A runtime
+// exception is thrown if the node could not be read
 BTreeNode* DiskBTree::load(uint32_t id)
 {
 	if (id == 0) return nullptr;
@@ -175,6 +184,7 @@ BTreeNode* DiskBTree::load(uint32_t id)
 	return node;
 }
 
+// Commit the specified node (and optionally the tree metadata) to disk
 void DiskBTree::commit(BTreeNode* node, bool includeBase)
 {
 	std::fstream f(TreePath, std::ios::binary | std::ios::in | std::ios::out);
@@ -213,6 +223,7 @@ void DiskBTree::commit(BTreeNode* node, bool includeBase)
 	f.close();
 }
 
+// Write the tree metadata to disk
 void DiskBTree::commitBase(bool append)
 {
 	auto flags = std::ios::binary | std::ios::out;
@@ -236,6 +247,9 @@ void DiskBTree::commitBase(bool append)
 	f.close();
 }
 
+// Insert the specified key k into the guaranteed non-full node x
+// Note that one or more children of x may be full. They will be
+// split if needed.
 void DiskBTree::insertNonFull(BTreeNode* x, std::string k)
 {
 	// Are we inserting the first element?
@@ -264,6 +278,7 @@ void DiskBTree::insertNonFull(BTreeNode* x, std::string k)
 
 	if(x->isLeaf)
 	{
+		// X is a leaf. Find where to insert the new key at
 		while(i >= 0 && k.compare(x->Keys[i]->key) < 0)
 		{
 			x->Keys[i + 1] = x->Keys[i--];
@@ -277,6 +292,8 @@ void DiskBTree::insertNonFull(BTreeNode* x, std::string k)
 	}
 	else
 	{
+		// X has child pointers, and the key is not in this node
+		// So find the child we need to search next
 		while(i >= 0 && k.compare(x->Keys[i]->key) < 0)
 		{
 			i--;
@@ -303,6 +320,7 @@ void DiskBTree::insertNonFull(BTreeNode* x, std::string k)
 				if (res < 0) break;
 			}
 
+			// Split the node so we have room to insert the new key
 			split(x, i, y);
 			comparisons++;
 			if(k.compare(x->Keys[i]->key) > 0)
@@ -311,6 +329,8 @@ void DiskBTree::insertNonFull(BTreeNode* x, std::string k)
 			}
 		}
 
+		// The child index we're looking at may have changed
+		// Re-Load it
 		delete y;
 		y = load(x->Children[i]);
 
@@ -319,6 +339,7 @@ void DiskBTree::insertNonFull(BTreeNode* x, std::string k)
 	}
 }
 
+// Split the child of x at the specified index, promoting the median into x
 void DiskBTree::split(BTreeNode* x, uint16_t idx)
 {
 	auto y = load(x->Children[idx]);
@@ -326,6 +347,7 @@ void DiskBTree::split(BTreeNode* x, uint16_t idx)
 	delete y;
 }
 
+// Split the child of x at the specified index (that is already loaded and available at y)
 void DiskBTree::split(BTreeNode* x, uint16_t i, BTreeNode* y)
 {
 	auto z = new BTreeNode(AllocateNode(), TFactor, MaxKeySize);
@@ -341,6 +363,7 @@ void DiskBTree::split(BTreeNode* x, uint16_t i, BTreeNode* y)
 
 	if(!y->isLeaf)
 	{
+		// Y isn't a leaf. Don't forget to move t child pointers
 		for(auto j = 0; j < TFactor; j++)
 		{
 			z->Children[j] = y->Children[j + TFactor];
@@ -348,26 +371,31 @@ void DiskBTree::split(BTreeNode* x, uint16_t i, BTreeNode* y)
 		}
 	}
 
-	// insert z as a child of x, move the median key of y up to x (y's parent), and adjust x's key count
-	// Move children over to make room
+	// insert z as a child of x
 	for(int64_t j = x->KeyCount; j >= i; j--)
 	{
 		x->Children[j + 1] = x->Children[j];
 	}
 	x->Children[i+1] = z->ID;
 
+	// Make room for the median of the split
 	for(int64_t j = x->KeyCount; j > i; j--)
 	{
 		x->Keys[j] = x->Keys[j-1];
 	}
 
+	// Promote the median
 	x->Keys[i] = y->Keys[TFactor-1];
 	y->Keys[TFactor - 1] = nullptr;
+
+	// And update the key count of x
 	x->KeyCount++;
 
+	// Commit all the things
 	commit(x);
 	commit(y);
 	commit(z, true);
 
+	// And clean up
 	delete z;
 }
