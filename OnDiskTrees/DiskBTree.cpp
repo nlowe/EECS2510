@@ -34,36 +34,36 @@
 DiskBTree::DiskBTree(std::string path, uint16_t branchingFactor, uint16_t maxKeySize)
 	: TreePath(path), TFactor(branchingFactor), MaxKeySize(maxKeySize)
 {
-	RootID = new BTreeNode(AllocateNode(), TFactor, MaxKeySize);
-	RootID->isLeaf = true;
-//	std::fstream reader;
-//	reader.open(path, std::ios::binary | std::ios::in);
-//
-//	readCount++;
-//
-//	if(!reader.good())
-//	{
-//		// Ensure the directory the tree should be placed in exists
-//		utils::createDirectories(utils::parent(path));
-//
-//		commitBase();
-//	
-//		// Probably a new tree, try to commit the empty metadata
-//		auto x = std::make_shared<BTreeNode>(AllocateNode(), TFactor, MaxKeySize);
-//		x->isLeaf = true;
-//		RootID = x->ID;
-//		commit(x, true);
-//	}
-//	else
-//	{
-//		// Existing tree
-//		utils::read_binary(reader, NextNode);
-//		utils::read_binary(reader, RootID);
-//		utils::read_binary(reader, TFactor);
-//		utils::read_binary(reader, MaxKeySize);
-//	}
-//
-//	reader.close();
+	std::fstream reader;
+	reader.open(path, std::ios::binary | std::ios::in);
+
+	readCount++;
+
+	if(!reader.good())
+	{
+		// Ensure the directory the tree should be placed in exists
+		utils::createDirectories(utils::parent(path));
+
+		commitBase();
+	
+		// Probably a new tree, try to commit the empty metadata
+		auto x = new BTreeNode(AllocateNode(), TFactor, MaxKeySize);
+		x->isLeaf = true;
+		RootID = x->ID;
+		commit(x, true);
+
+		delete x;
+	}
+	else
+	{
+		// Existing tree
+		utils::read_binary(reader, NextNode);
+		utils::read_binary(reader, RootID);
+		utils::read_binary(reader, TFactor);
+		utils::read_binary(reader, MaxKeySize);
+	}
+
+	reader.close();
 }
 
 
@@ -75,30 +75,36 @@ DiskBTree::~DiskBTree()
 void DiskBTree::add(std::string key)
 {
 	if (key.length() > MaxKeySize) throw std::runtime_error("Key to large. Try again with a larger max key size");
-//
-//	auto r = load(RootID);
-//	assert(r != nullptr);
 
-	if(RootID->isFull())
+	auto r = load(RootID);
+	assert(r != nullptr);
+
+	if(r->isFull())
 	{
 		auto s = new BTreeNode(AllocateNode(), TFactor, MaxKeySize);
-		auto oldroot = RootID;
-		RootID = s;
+
+		RootID = s->ID;
 		s->isLeaf = false;
-		s->Children[s->KeyCount] = oldroot;
-//		commit(s, true);
-		split(s, 0, oldroot);
+		s->Children[s->KeyCount] = r->ID;
+		commit(s, true);
+		split(s, 0, r);
 		insertNonFull(s, key);
+
+		delete s;
 	}
 	else
 	{
-		insertNonFull(RootID, key);
+		insertNonFull(r, key);
 	}
+
+	delete r;
 }
 
-void DiskBTree::inOrderPrintFrom(BTreeNode* node) const
+void DiskBTree::inOrderPrintFrom(uint32_t id)
 {
-	if (node == nullptr) return;
+	if (id == 0) return;
+
+	auto node = load(id);
 
 	for(auto i=0; i < node->KeyCount; i++)
 	{
@@ -106,13 +112,15 @@ void DiskBTree::inOrderPrintFrom(BTreeNode* node) const
 		std::cout << node->Keys[i]->key << ": " << node->Keys[i]->count << std::endl;
 	}
 	inOrderPrintFrom(node->Children[node->KeyCount]);
+
+	delete node;
 }
 
-std::unique_ptr<Word> DiskBTree::findFrom(BTreeNode* x, std::string key)
+std::unique_ptr<Word> DiskBTree::findFrom(uint32_t id, std::string key)
 {
-	if (x == nullptr) return nullptr;
+	if (id == 0) return nullptr;
 
-//	auto x = load(id);
+	auto x = load(id);
 	auto i = 0;
 
 	while (i < x->KeyCount && key.compare(x->Keys[i]->key) > 0)
@@ -121,106 +129,112 @@ std::unique_ptr<Word> DiskBTree::findFrom(BTreeNode* x, std::string key)
 		comparisons++;
 	}
 
+	std::unique_ptr<Word> res;
+
 	if (i < x->KeyCount && key.compare(x->Keys[i]->key) == 0)
 	{
 		comparisons += 2; // One for the last check of the while loop, and one for the if statement
-		return std::make_unique<Word>(x->Keys[i]->key, x->Keys[i]->count);
+		res = std::make_unique<Word>(x->Keys[i]->key, x->Keys[i]->count);
+	}
+	else if(!x->isLeaf)
+	{
+		res = findFrom(x->Children[i-1], key);
 	}
 	
-	if(x->isLeaf) return nullptr;
+	delete x;
 	
-	return findFrom(x->Children[i-1], key);
+	return res;
 }
 
-//BTreeNode* DiskBTree::load(uint32_t id)
-//{
-//	if (id == 0) return nullptr;
-//
-//	std::fstream f(TreePath, std::ios::binary | std::ios::in);
-//
-//	if (!f.good())
-//	{
-//		f.close();
-//		throw std::runtime_error("Unable to open tree for read: " + TreePath);
-//	}
-//	readCount++;
-//
-//	// Skip the metadata
-//	f.seekg(sizeof(NextNode) + sizeof(RootID) + sizeof(TFactor) + sizeof(MaxKeySize), std::ios::beg);
-//
-//	// Skip nodes until we get to the node we're looking for
-//	for (auto i = 0; i < id - 1; i++)
-//	{
-//		skipReadNode(f);
-//	}
-//
-//	auto node = std::make_shared<BTreeNode>(id, TFactor, MaxKeySize, f);
-//
-//	f.close();
-//
-//	return node;
-//}
-//
-//void DiskBTree::commit(BTreeNode* node, bool includeBase)
-//{
-//	std::fstream f(TreePath, std::ios::binary | std::ios::in | std::ios::out);
-//
-//	if (!f.good() && !includeBase)
-//	{
-//		f.close();
-//		throw std::runtime_error("Unable to open tree for read or create: " + TreePath);
-//	}
-//
-//	writeCount++;
-//	readCount++;
-//
-//	if(includeBase)
-//	{
-//		utils::write_binary(f, NextNode);
-//		utils::write_binary(f, RootID);
-//		utils::write_binary(f, TFactor);
-//		utils::write_binary(f, MaxKeySize);
-//		f.flush();
-//	}
-//	else
-//	{
-//		// We're noot writing the base metadata, skip over it
-//		f.seekp(sizeof(NextNode) + sizeof(RootID) + sizeof(TFactor) + sizeof(MaxKeySize), std::ios::beg);
-//	}
-//
-//	// Skip any nodes before this node and seek the writer
-//	for (unsigned short i = 0; i < node->ID - 1; i++)
-//	{
-//		skipReadNode(f);
-//	}
-//
-//	node->write(f);
-//
-//	f.close();
-//}
-//
-//void DiskBTree::commitBase(bool append)
-//{
-//	auto flags = std::ios::binary | std::ios::out;
-//	if (append) flags |= std::ios::in;
-//
-//	std::fstream f(TreePath, flags);
-//
-//	if (!f.good())
-//	{
-//		f.close();
-//		throw std::runtime_error("Unable to open tree for write or create: " + TreePath);
-//	}
-//
-//	writeCount++;
-//
-//	utils::write_binary(f, NextNode);
-//	utils::write_binary(f, RootID);
-//	utils::write_binary(f, TFactor);
-//	utils::write_binary(f, MaxKeySize);
-//
-//	f.close();
-//}
+BTreeNode* DiskBTree::load(uint32_t id)
+{
+	if (id == 0) return nullptr;
+
+	std::fstream f(TreePath, std::ios::binary | std::ios::in);
+
+	if (!f.good())
+	{
+		f.close();
+		throw std::runtime_error("Unable to open tree for read: " + TreePath);
+	}
+	readCount++;
+
+	// Skip the metadata
+	f.seekg(sizeof(NextNode) + sizeof(RootID) + sizeof(TFactor) + sizeof(MaxKeySize), std::ios::beg);
+
+	// Skip nodes until we get to the node we're looking for
+	for (auto i = 0; i < id - 1; i++)
+	{
+		skipReadNode(f);
+	}
+
+	auto node = new BTreeNode(id, TFactor, MaxKeySize, f);
+
+	f.close();
+
+	return node;
+}
+
+void DiskBTree::commit(BTreeNode* node, bool includeBase)
+{
+	std::fstream f(TreePath, std::ios::binary | std::ios::in | std::ios::out);
+
+	if (!f.good() && !includeBase)
+	{
+		f.close();
+		throw std::runtime_error("Unable to open tree for read or create: " + TreePath);
+	}
+
+	writeCount++;
+	readCount++;
+
+	if(includeBase)
+	{
+		utils::write_binary(f, NextNode);
+		utils::write_binary(f, RootID);
+		utils::write_binary(f, TFactor);
+		utils::write_binary(f, MaxKeySize);
+		f.flush();
+	}
+	else
+	{
+		// We're noot writing the base metadata, skip over it
+		f.seekp(sizeof(NextNode) + sizeof(RootID) + sizeof(TFactor) + sizeof(MaxKeySize), std::ios::beg);
+	}
+
+	// Skip any nodes before this node and seek the writer
+	for (unsigned short i = 0; i < node->ID - 1; i++)
+	{
+		skipReadNode(f);
+	}
+
+	node->write(f);
+
+	f.close();
+}
+
+void DiskBTree::commitBase(bool append)
+{
+	auto flags = std::ios::binary | std::ios::out;
+	if (append) flags |= std::ios::in;
+
+	std::fstream f(TreePath, flags);
+
+	if (!f.good())
+	{
+		f.close();
+		throw std::runtime_error("Unable to open tree for write or create: " + TreePath);
+	}
+
+	writeCount++;
+
+	utils::write_binary(f, NextNode);
+	utils::write_binary(f, RootID);
+	utils::write_binary(f, TFactor);
+	utils::write_binary(f, MaxKeySize);
+
+	f.close();
+}
 
 void DiskBTree::insertNonFull(BTreeNode* x, std::string k)
 {
@@ -228,7 +242,7 @@ void DiskBTree::insertNonFull(BTreeNode* x, std::string k)
 	if(x->isEmpty())
 	{
 		x->Keys[x->KeyCount++] = new Word(k);
-		//commit(x);
+		commit(x);
 		return;
 	}
 	
@@ -241,6 +255,7 @@ void DiskBTree::insertNonFull(BTreeNode* x, std::string k)
 		if(res == 0)
 		{
 			x->Keys[j]->count++;
+			commit(x);
 			return;
 		}
 
@@ -258,7 +273,7 @@ void DiskBTree::insertNonFull(BTreeNode* x, std::string k)
 		x->Keys[i + 1] = new Word(k);
 		x->KeyCount++;
 
-//		commit(x);
+		commit(x, true);
 	}
 	else
 	{
@@ -269,8 +284,7 @@ void DiskBTree::insertNonFull(BTreeNode* x, std::string k)
 		}
 		i++; // We're not 1-indexed...
 
-//		auto y = load(x->Children[i]);
-		auto y = x->Children[i];
+		auto y = load(x->Children[i]);
 
 		if (y->isFull())
 		{
@@ -281,6 +295,8 @@ void DiskBTree::insertNonFull(BTreeNode* x, std::string k)
 				if(res == 0)
 				{
 					y->Keys[j]->count++;
+					commit(y);
+					delete y;
 					return;
 				}
 				
@@ -294,13 +310,20 @@ void DiskBTree::insertNonFull(BTreeNode* x, std::string k)
 				i++;
 			}
 		}
-		insertNonFull(x->Children[i], k);
+
+		delete y;
+		y = load(x->Children[i]);
+
+		insertNonFull(y, k); // FIXME: Causes heap corruption?
+		delete y;
 	}
 }
 
 void DiskBTree::split(BTreeNode* x, uint16_t idx)
 {
-	split(x, idx, x->Children[idx]);
+	auto y = load(x->Children[idx]);
+	split(x, idx, y);
+	delete y;
 }
 
 void DiskBTree::split(BTreeNode* x, uint16_t i, BTreeNode* y)
@@ -321,7 +344,7 @@ void DiskBTree::split(BTreeNode* x, uint16_t i, BTreeNode* y)
 		for(auto j = 0; j < TFactor; j++)
 		{
 			z->Children[j] = y->Children[j + TFactor];
-			y->Children[j + TFactor] = nullptr;
+			y->Children[j + TFactor] = 0;
 		}
 	}
 
@@ -331,7 +354,7 @@ void DiskBTree::split(BTreeNode* x, uint16_t i, BTreeNode* y)
 	{
 		x->Children[j + 1] = x->Children[j];
 	}
-	x->Children[i+1] = z;
+	x->Children[i+1] = z->ID;
 
 	for(int64_t j = x->KeyCount; j >= i; j--)
 	{
@@ -342,8 +365,10 @@ void DiskBTree::split(BTreeNode* x, uint16_t i, BTreeNode* y)
 	x->Keys[i] = y->Keys[TFactor-1];
 	y->Keys[TFactor - 1] = nullptr;
 	x->KeyCount++;
-//
-//	commit(y);
-//	commit(z);
-//	commit(x);
+
+	commit(x);
+	commit(y);
+	commit(z, true);
+
+	delete z;
 }

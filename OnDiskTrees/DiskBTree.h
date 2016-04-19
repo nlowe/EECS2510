@@ -35,6 +35,14 @@
 #include "Word.h"
 #include "Utils.h"
 
+// A structure for a B-Tree node stored on disk
+//
+// File Format:
+//
+// For all 2*TFactor - 1 nodes:
+//     MaximumKeyLength bytes: The key
+//     4 bytes: The occurrance count of the key
+// 4 bytes * (2*TFactor): array of unsigned integers containing the ID of the child nodes
 struct BTreeNode
 {
 	const unsigned short TFactor;
@@ -48,42 +56,48 @@ struct BTreeNode
 	// Actually an array of Word pointers
 	Word** Keys;
 	// Actually an array of uint32_t
-	BTreeNode** Children;
+	uint32_t* Children;
 
 	BTreeNode(unsigned int id, unsigned short factor, unsigned short maxlen) :
 		TFactor(factor), MaxKeyLen(maxlen), ID(id), isLeaf(true), KeyCount(0)
 	{
 		Keys = new Word*[MaxNumKeys()]{ nullptr };
-		Children = new BTreeNode*[MaxNumKeys() + 1]{ nullptr };
+		Children = new uint32_t[MaxNumKeys() + 1]{ 0 };
 	}
 
-//	BTreeNode(unsigned int id, unsigned short factor, unsigned short maxlen, std::fstream& f) :
-//		BTreeNode(id, factor, maxlen)
-//	{
-//		utils::read_binary(f, KeyCount);
-//
-//		for (auto i = 0; i < MaxNumKeys(); i++)
-//		{
-//			auto buff = new char[MaxKeyLen];
-//			f.read(buff, maxlen);
-//
-//			uint32_t count;
-//			utils::read_binary(f, count);
-//
-//			Keys[i] = i >= KeyCount ? nullptr : new Word(std::string(buff), count);
-//
-//			delete[] buff;
-//		}
-//
-//		for (auto i = 0; i <= MaxNumKeys(); i++)
-//		{
-//			uint32_t c;
-//			utils::read_binary(f, c);
-//
-//			Children[i] = c;
-//			if (c != 0) isLeaf = false;
-//		}
-//	}
+	BTreeNode(unsigned int id, unsigned short factor, unsigned short maxlen, std::fstream& f) :
+		BTreeNode(id, factor, maxlen)
+	{
+		for (auto i = 0; i < MaxNumKeys(); i++)
+		{
+			auto buff = new char[MaxKeyLen];
+			f.read(buff, maxlen);
+
+			uint32_t count;
+			utils::read_binary(f, count);
+
+			if(buff[0] == 0)
+			{
+				Keys[i] == nullptr;
+			}
+			else
+			{
+				Keys[i] = new Word(std::string(buff), count);
+				KeyCount++;
+			}
+
+			delete[] buff;
+		}
+
+		for (auto i = 0; i <= MaxNumKeys(); i++)
+		{
+			uint32_t c;
+			utils::read_binary(f, c);
+
+			Children[i] = c;
+			if (c != 0) isLeaf = false;
+		}
+	}
 
 	~BTreeNode()
 	{
@@ -96,50 +110,40 @@ struct BTreeNode
 			}
 		}
 
-		for(auto i = 0; i < MaxNumKeys() + 1; i++)
-		{
-			if(Children[i] != nullptr)
-			{
-				delete Children[i];
-				Children[i] = nullptr;
-			}
-		}
-
 		delete[] Keys;
 		delete[] Children;
 	}
 
-//	void write(std::fstream& f) const
-//	{
-//		utils::write_binary(f, KeyCount);
-//
-//		for (auto i = 0; i < MaxNumKeys(); i++)
-//		{
-//			if (Keys[i] == nullptr)
-//			{
-//				std::string dummy;
-//				dummy.resize(MaxKeyLen, 0x00);
-//				f.write(dummy.c_str(), MaxKeyLen);
-//
-//				unsigned short dummyCount = 0;
-//				utils::write_binary(f, dummyCount);
-//			}
-//			else
-//			{
-//				auto k = Keys[i];
-//				auto buff = k->key;
-//				buff.resize(MaxKeyLen, 0x00);
-//				f.write(const_cast<char*>(buff.c_str()), MaxKeyLen);
-//
-//				utils::write_binary(f, k->count);
-//			}
-//		}
-//
-//		for (auto i = 0; i <= MaxNumKeys(); i++)
-//		{
-//			utils::write_binary(f, Children[i]);
-//		}
-//	}
+	void write(std::fstream& f) const
+	{
+		for (auto i = 0; i < MaxNumKeys(); i++)
+		{
+			if (Keys[i] == nullptr)
+			{
+				auto dummy = new char[MaxKeyLen]{0};
+				f.write(dummy, MaxKeyLen);
+
+				uint32_t dummyCount = 0;
+				utils::write_binary(f, dummyCount);
+			}
+			else
+			{
+				auto k = Keys[i];
+				auto buff = k->key;
+				buff.resize(MaxKeyLen, 0x00);
+				f.write(const_cast<char*>(buff.c_str()), MaxKeyLen);
+
+				utils::write_binary(f, k->count);
+			}
+		}
+
+		for (auto i = 0; i <= MaxNumKeys(); i++)
+		{
+			if (Children[i] > 0)
+				i += 0;
+			utils::write_binary(f, Children[i]);
+		}
+	}
 
 	bool isFull() const { return KeyCount == MaxNumKeys(); }
 	bool isEmpty() const { return KeyCount == 0; }
@@ -158,8 +162,8 @@ struct BTreeNode
 // 2 bytes: unsigned short containing the T-factor of the tree
 // 2 bytes: unsigned short containing the maximum length in bytes of all keys
 // variable: for each node in the tree
-//     maximum key length * (2*T-factor - 2) bytes: all keys in the node. If a key is not used, it is filled with 0x00
-//     4 bytes * (2*T-Factor - 1): array of unsigned integers containing the ID of the child nodes
+//     maximum key length * (2*T-factor - 1) bytes: all keys in the node. If a key is not used, it is filled with 0x00
+//     4 bytes * (2*T-Factor): array of unsigned integers containing the ID of the child nodes
 //
 // This structure is not thread-safe for inserts / writes
 class DiskBTree : public IWordCounter
@@ -179,13 +183,13 @@ public:
 	void inOrderPrint() override { return inOrderPrintFrom(RootID); }
 
 	// Check to see if the tree is empty (the root is null)
-	bool isEmpty() const { return RootID == nullptr; }
+	bool isEmpty() const { return RootID == 0; }
 
 private:
 	std::string TreePath = "";
 
 	uint32_t NextNode = 1;
-	BTreeNode* RootID = nullptr;
+	uint32_t RootID = 0;
 	uint16_t TFactor;
 	uint16_t MaxKeySize;
 
@@ -197,28 +201,28 @@ private:
 		return NextNode++;
 	}
 
-	void inOrderPrintFrom(BTreeNode* node) const;
+	void inOrderPrintFrom(uint32_t node);
 
-	std::unique_ptr<Word> findFrom(BTreeNode* node, std::string key);
+	std::unique_ptr<Word> findFrom(uint32_t node, std::string key);
 
-//	std::shared_ptr<BTreeNode> load(uint32_t id);
-//
-//	void commit(std::shared_ptr<BTreeNode> node, bool includeBase = false);
-//	
-//	// Write the tree metadata to disk
-//	void commitBase(bool append=false);
-//
-//	// Skip over the next node in the specified stream
-//	void skipReadNode(std::fstream& f) const
-//	{
-//		f.seekg(MaxKeySize * MaxNumKeys() + 4 * (MaxNumKeys() + 1), std::ios::cur);
-//	}
+	BTreeNode* load(uint32_t id);
 
-	std::unique_ptr<DocumentStatistics> documentStatsFrom(BTreeNode* n)
+	void commit(BTreeNode* node, bool includeBase = false);
+	
+	// Write the tree metadata to disk
+	void commitBase(bool append=false);
+
+	// Skip over the next node in the specified stream
+	void skipReadNode(std::fstream& f) const
 	{
-		if (n == nullptr) return std::make_unique<DocumentStatistics>(0, 0, 0);
+		f.seekg((MaxKeySize + 4) * MaxNumKeys() + 4 * (MaxNumKeys() + 1), std::ios::cur);
+	}
 
-		//auto n = load(id);
+	std::unique_ptr<DocumentStatistics> documentStatsFrom(uint32_t id)
+	{
+		if (id == 0) return std::make_unique<DocumentStatistics>(0, 0, 0);
+
+		auto n = load(id);
 
 		size_t total = 0;
 		size_t distinct = n->KeyCount;
