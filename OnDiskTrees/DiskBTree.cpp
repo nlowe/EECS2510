@@ -314,7 +314,7 @@ void DiskBTree::insertNonFull(BTreeNode* x, std::string k)
 		delete y;
 		y = load(x->Children[i]);
 
-		insertNonFull(y, k); // FIXME: Causes heap corruption?
+		insertNonFull(y, k); // FIXME: Causes heap corruption if x was split?
 		delete y;
 	}
 }
@@ -356,10 +356,9 @@ void DiskBTree::split(BTreeNode* x, uint16_t i, BTreeNode* y)
 	}
 	x->Children[i+1] = z->ID;
 
-	for(int64_t j = x->KeyCount; j >= i; j--)
+	for(int64_t j = x->KeyCount; j > i; j--)
 	{
-		x->Keys[j + 1] = x->Keys[j];
-		if (j == 0) break;
+		x->Keys[j] = x->Keys[j-1];
 	}
 
 	x->Keys[i] = y->Keys[TFactor-1];

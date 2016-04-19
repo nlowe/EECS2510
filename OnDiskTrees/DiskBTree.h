@@ -61,7 +61,7 @@ struct BTreeNode
 	BTreeNode(unsigned int id, unsigned short factor, unsigned short maxlen) :
 		TFactor(factor), MaxKeyLen(maxlen), ID(id), isLeaf(true), KeyCount(0)
 	{
-		Keys = new Word*[MaxNumKeys()]{ nullptr };
+		Keys = new Word*[MaxNumKeys()]{nullptr};
 		Children = new uint32_t[MaxNumKeys() + 1]{ 0 };
 	}
 
@@ -76,11 +76,7 @@ struct BTreeNode
 			uint32_t count;
 			utils::read_binary(f, count);
 
-			if(buff[0] == 0)
-			{
-				Keys[i] == nullptr;
-			}
-			else
+			if(buff[0] != 0)
 			{
 				Keys[i] = new Word(std::string(buff), count);
 				KeyCount++;
@@ -101,9 +97,9 @@ struct BTreeNode
 
 	~BTreeNode()
 	{
-		for(auto i = 0; i < MaxNumKeys(); i++)
+		for(auto i = 0; i < KeyCount; i++)
 		{
-			if (Keys[i] != nullptr)
+			if(Keys[i] != nullptr)
 			{
 				delete Keys[i];
 				Keys[i] = nullptr;
