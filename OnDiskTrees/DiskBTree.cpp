@@ -314,7 +314,7 @@ void DiskBTree::insertNonFull(BTreeNode* x, std::string k)
 		delete y;
 		y = load(x->Children[i]);
 
-		insertNonFull(y, k); // FIXME: Causes heap corruption if x was split?
+		insertNonFull(y, k);
 		delete y;
 	}
 }
