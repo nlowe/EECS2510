@@ -167,24 +167,26 @@ int runFileBenchmarks(Options options)
 	auto avlStats = avlTree->getDocumentStatistics();
 	auto btreeStats = btree->getDocumentStatistics();
 
+	auto btreeLoad = static_cast<double>(btreeStats->DistinctWords) / static_cast<double>(btreeStats->TotalNodes * (2*options.TFactor - 1));
+
 	// Print the results
 	if (options.csvMode)
 	{
 		if (!options.noHeaders)
 		{
-			cout << "File,Overhead,ATime,AHeight,ADist,ATotal,AComp,ARef,ABal,ARead,AWrite,BTime,BHeight,BDist,BTotal,BComp,BRef,BRead,BWrite" << endl;
+			cout << "File,Overhead,ATime,AHeight,ADist,ATotal,AComp,ARef,ABal,ARead,AWrite,ASize,BTime,BHeight,BDist,BTotal,BComp,BRef,BRead,BWrite,BSize,BLoad" << endl;
 		}
 		cout << '"' << path << "\"," << overhead << ',';
-		cout << avlTime << ',' << avlStats->TreeHeight << ',' << avlStats->DistinctWords << ',' << avlStats->TotalWords << ',' << avlTree->getComparisonCount() << ',' << avlTree->getReferenceChanges() << ',' << avlTree->getBalanceFactorChangeCount() << ',' << avlTree->GetReadCount() << ',' << avlTree->GetWriteCount() << ',';
-		cout << btreeTime << ',' << btreeStats->TreeHeight << ',' << btreeStats->DistinctWords << ',' << btreeStats->TotalWords << ',' << btree->getComparisonCount() << ',' << btree->getReferenceChanges() << ',' << btree->GetReadCount() << ',' << btree->GetWriteCount() << endl;
+		cout << avlTime << ',' << avlStats->TreeHeight << ',' << avlStats->DistinctWords << ',' << avlStats->TotalWords << ',' << avlTree->getComparisonCount() << ',' << avlTree->getReferenceChanges() << ',' << avlTree->getBalanceFactorChangeCount() << ',' << avlTree->GetReadCount() << ',' << avlTree->GetWriteCount() << ',' << avlTree->GetFileSize() << ',';
+		cout << btreeTime << ',' << btreeStats->TreeHeight << ',' << btreeStats->DistinctWords << ',' << btreeStats->TotalWords << ',' << btree->getComparisonCount() << ',' << btree->getReferenceChanges() << ',' << btree->GetReadCount() << ',' << btree->GetWriteCount() << btree->GetFileSize() << ',' << btreeLoad << endl;
 	}
 	else
 	{
 		cout << "Total Runtime for file \"" << path << "\": " << (overhead + avlTime + btreeTime) << "ms" << endl;
 		cout << "Overhead: " << overhead << "ms" << endl;
-		cout << "AVL: Height=" << avlStats->TreeHeight << ", DistinctWords=" << avlStats->DistinctWords << ", TotalWords=" << avlStats->TotalWords << ", Time=" << avlTime << "ms, Comparisons=" << avlTree->getComparisonCount() << ", ReferenceChanges=" << avlTree->getReferenceChanges() << ", BalanceFactorChanges=" << avlTree->getBalanceFactorChangeCount() << ", Reads=" << avlTree->GetReadCount() << ", Writes=" << avlTree->GetWriteCount() << endl;
-		cout << "BTree: Height=" << btreeStats->TreeHeight << ", DistinctWords=" << btreeStats->DistinctWords << ", TotalWords=" << btreeStats->TotalWords << ", Time=" << btreeTime << "ms, Comparisons=" << btree->getComparisonCount() << ", ReferenceChanges=" << btree->getReferenceChanges() << ", Reads=" << btree->GetReadCount() << ", Writes=" << btree->GetWriteCount() << endl;
-
+		cout << "AVL: Height=" << avlStats->TreeHeight << ", DistinctWords=" << avlStats->DistinctWords << ", TotalWords=" << avlStats->TotalWords << ", Time=" << avlTime << "ms, Comparisons=" << avlTree->getComparisonCount() << ", ReferenceChanges=" << avlTree->getReferenceChanges() << ", BalanceFactorChanges=" << avlTree->getBalanceFactorChangeCount() << ", Reads=" << avlTree->GetReadCount() << ", Writes=" << avlTree->GetWriteCount() << ", Size=" << avlTree->GetFileSize() << endl;
+		cout << "BTree: Height=" << btreeStats->TreeHeight << ", DistinctWords=" << btreeStats->DistinctWords << ", TotalWords=" << btreeStats->TotalWords << ", Time=" << btreeTime << "ms, Comparisons=" << btree->getComparisonCount() << ", ReferenceChanges=" << btree->getReferenceChanges() << ", Reads=" << btree->GetReadCount() << ", Writes=" << btree->GetWriteCount() << ", Size=" << btree->GetFileSize() << ", Load=" << btreeLoad << "%" << endl;
+		
 		if(!options.quiet)
 		{
 			cout << "AVL In Order:" << endl;
@@ -233,22 +235,24 @@ int runRandomBenchmarks(Options options)
 	auto avlStats = avlTree->getDocumentStatistics();
 	auto btreeStats = btree->getDocumentStatistics();
 
+	auto btreeLoad = static_cast<double>(btreeStats->DistinctWords) / static_cast<double>(btreeStats->TotalNodes * (2*options.TFactor - 1));
+
 	// Print the results
 	if(options.csvMode)
 	{
 		if(!options.noHeaders)
 		{
-			cout << "Count,Size,ATime,AHeight,ADist,ATotal,AComp,ARef,ABal,ARead,AWrite,BTime,BHeight,BDist,BTotal,BComp,BRef,BRead,BWrite" << endl;
+			cout << "Count,Size,ATime,AHeight,ADist,ATotal,AComp,ARef,ABal,ARead,AWrite,ASize,BTime,BHeight,BDist,BTotal,BComp,BRef,BRead,BWrite,BSize,BLoad" << endl;
 		}
 		cout << options.RandomCount << ',' << options.RandomSize << ',';
-		cout << avlTime << ',' << avlStats->TreeHeight << ',' << avlStats->DistinctWords << ',' << avlStats->TotalWords << ',' << avlTree->getComparisonCount() << ',' << avlTree->getReferenceChanges() << ',' << avlTree->getBalanceFactorChangeCount() << ',' << avlTree->GetReadCount() << ',' << avlTree->GetWriteCount() << ',';
-		cout << btreeTime << ',' << btreeStats->TreeHeight << ',' << btreeStats->DistinctWords << ',' << btreeStats->TotalWords << ',' << btree->getComparisonCount() << ',' << btree->getReferenceChanges() << ',' << btree->GetReadCount() << ',' << btree->GetWriteCount() << endl;
+		cout << avlTime << ',' << avlStats->TreeHeight << ',' << avlStats->DistinctWords << ',' << avlStats->TotalWords << ',' << avlTree->getComparisonCount() << ',' << avlTree->getReferenceChanges() << ',' << avlTree->getBalanceFactorChangeCount() << ',' << avlTree->GetReadCount() << ',' << avlTree->GetWriteCount() << ',' << avlTree->GetFileSize() << ',';
+		cout << btreeTime << ',' << btreeStats->TreeHeight << ',' << btreeStats->DistinctWords << ',' << btreeStats->TotalWords << ',' << btree->getComparisonCount() << ',' << btree->getReferenceChanges() << ',' << btree->GetReadCount() << ',' << btree->GetWriteCount() << btree->GetFileSize() << ',' << btreeLoad << endl;
 	}
 	else
 	{
 		cout << "Total Runtime for " << options.RandomCount << " random strings of length " << options.RandomSize << ": " << (avlTime) << "ms" << endl;
-		cout << "AVL: Height=" << avlStats->TreeHeight << ", DistinctWords=" << avlStats->DistinctWords << ", TotalWords=" << avlStats->TotalWords << ", Time=" << avlTime << "ms, Comparisons=" << avlTree->getComparisonCount() << ", ReferenceChanges=" << avlTree->getReferenceChanges() << ", BalanceFactorChanges=" << avlTree->getBalanceFactorChangeCount() << ", Reads=" << avlTree->GetReadCount() << ", Writes=" << avlTree->GetWriteCount() << endl;
-		cout << "BTree: Height=" << btreeStats->TreeHeight << ", DistinctWords=" << btreeStats->DistinctWords << ", TotalWords=" << btreeStats->TotalWords << ", Time=" << btreeTime << "ms, Comparisons=" << btree->getComparisonCount() << ", ReferenceChanges=" << btree->getReferenceChanges() << ", Reads=" << btree->GetReadCount() << ", Writes=" << btree->GetWriteCount() << endl;
+		cout << "AVL: Height=" << avlStats->TreeHeight << ", DistinctWords=" << avlStats->DistinctWords << ", TotalWords=" << avlStats->TotalWords << ", Time=" << avlTime << "ms, Comparisons=" << avlTree->getComparisonCount() << ", ReferenceChanges=" << avlTree->getReferenceChanges() << ", BalanceFactorChanges=" << avlTree->getBalanceFactorChangeCount() << ", Reads=" << avlTree->GetReadCount() << ", Writes=" << avlTree->GetWriteCount() << ", Size=" << avlTree->GetFileSize() << endl;
+		cout << "BTree: Height=" << btreeStats->TreeHeight << ", DistinctWords=" << btreeStats->DistinctWords << ", TotalWords=" << btreeStats->TotalWords << ", Time=" << btreeTime << "ms, Comparisons=" << btree->getComparisonCount() << ", ReferenceChanges=" << btree->getReferenceChanges() << ", Reads=" << btree->GetReadCount() << ", Writes=" << btree->GetWriteCount() << ", Size=" << btree->GetFileSize() << ", Load=" << btreeLoad << "%" << endl;
 
 		if(!options.quiet)
 		{

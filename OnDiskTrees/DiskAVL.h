@@ -151,6 +151,15 @@ public:
 	{
 		return documentStatsFrom(RootID);
 	}
+	
+	size_t GetFileSize() override
+	{
+		FileHandle.seekg(0, std::ios::end);
+		size_t ret = FileHandle.tellg();
+		FileHandle.seekg(0, std::ios::beg);
+
+		return ret;
+	}
 
 	// Performs an in-order traversal on the tree, printing out the keys and their occurrance counts
 	void inOrderPrint() override { inOrderPrintFrom(RootID); }

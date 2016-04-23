@@ -36,6 +36,8 @@ public:
 	// The number of disk read operations performed during the lifetime of this object
 	size_t GetReadCount() const { return readCount; }
 
+	// The size of the disk file in bytes
+	virtual size_t GetFileSize() = 0;
 protected:
 	size_t writeCount = 0;
 	size_t readCount = 0;

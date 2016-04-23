@@ -199,6 +199,15 @@ public:
 	//     A unique pointer to a DocumentStatistics object
 	std::unique_ptr<DocumentStatistics> getDocumentStatistics() override { return documentStatsFrom(RootID); }
 
+	size_t GetFileSize() override
+	{
+		FileHandle.seekg(0, std::ios::end);
+		size_t ret = FileHandle.tellg();
+		FileHandle.seekg(0, std::ios::beg);
+
+		return ret;
+	}
+
 	// Performs an in-order traversal on the tree, printing out the keys and their occurrance counts
 	void inOrderPrint() override { return inOrderPrintFrom(RootID); }
 
@@ -267,15 +276,17 @@ private:
 
 		// And process all sub-children
 		size_t subtreeHeight = 0;
+		size_t subtreeNodes = 0;
 		for(auto i = 0; i <= n->KeyCount; i++)
 		{
 			auto subStats = documentStatsFrom(n->Children[i]);
 			subtreeHeight = max(subtreeHeight, subStats->TreeHeight); // New maximum height?
 			total += subStats->TotalWords;
 			distinct += subStats->DistinctWords;
+			subtreeNodes += subStats->TotalNodes;
 		}
 
-		return std::make_unique<DocumentStatistics>(1 + subtreeHeight, total, distinct);
+		return std::make_unique<DocumentStatistics>(1 + subtreeHeight, total, distinct, 1 + subtreeNodes);
 	}
 
 	// Insert the specified key k into the guaranteed non-full node x

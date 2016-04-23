@@ -30,12 +30,15 @@
 // A structure representing statistics about a given document
 struct DocumentStatistics
 {
-	DocumentStatistics(size_t height, size_t total, size_t distinct) : TreeHeight(height), TotalWords(total), DistinctWords(distinct) {}
+	DocumentStatistics(size_t height, size_t total, size_t distinct) : TreeHeight(height), TotalWords(total), TotalNodes(total), DistinctWords(distinct) {}
+	DocumentStatistics(size_t height, size_t total, size_t distinct, size_t nodes) : TreeHeight(height), TotalWords(total), TotalNodes(nodes), DistinctWords(distinct) {}
 
 	// The height of the tree used to count words in this document
 	const size_t TreeHeight;
 	// The total number of words encountered while parsing the document
 	const size_t TotalWords;
+	// The total number of nodes in the tree
+	const size_t TotalNodes;
 	// The total number of distinct words encountered while parsing the document
 	const size_t DistinctWords;
 };
