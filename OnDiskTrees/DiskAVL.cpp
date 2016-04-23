@@ -32,17 +32,22 @@
 #include <memory>
 
 
-DiskAVL::DiskAVL(std::string path) : TreePath(path)
+DiskAVL::DiskAVL(std::string path, unsigned short maxKeyLen) : TreePath(path), MaxKeyLen(maxKeyLen)
 {
-	std::fstream reader;
-	reader.open(path, std::ios::binary | std::ios::in);
+	// Ensure the directory the tree should be placed in exists
+	utils::createDirectories(utils::parent(path));
+
+	FileHandle.open(path, std::ios::binary | std::ios::in);
 
 	readCount++;
 
-	if(!reader.good())
+	if(!FileHandle.good())
 	{
-		// Ensure the directory the tree should be placed in exists
-		utils::createDirectories(utils::parent(path));
+		// We have to do this dance to ensure the file gets created...
+		FileHandle.close();
+		FileHandle.open(path, std::ios::out);
+		FileHandle.close();
+		FileHandle.open(path, std::ios::binary | std::ios::in | std::ios::out);
 
 		// Probably a new tree, try to commit the empty metadata
 		commitBase();
@@ -50,15 +55,14 @@ DiskAVL::DiskAVL(std::string path) : TreePath(path)
 	else
 	{
 		// Existing tree
-		utils::read_binary(reader, NextNodeID);
-		utils::read_binary(reader, RootID);
+		utils::read_binary(FileHandle, NextNodeID);
+		utils::read_binary(FileHandle, RootID);
 	}
-
-	reader.close();
 }
 
 DiskAVL::~DiskAVL()
 {
+	if (FileHandle.is_open()) FileHandle.close();
 }
 
 // Insert the specified string into the tree. If the word is not already in
@@ -66,11 +70,13 @@ DiskAVL::~DiskAVL()
 // and rotations may be performed to keep the tree balanced.
 void DiskAVL::add(std::string word)
 {
+	if (word.length() > MaxKeyLen) throw std::runtime_error("Key to large. Try again with a larger max key size");
+
 	// The tree is empty, just update the root pointer
 	if (isEmpty())
 	{
 		this->referenceChanges++;
-		auto r = std::make_shared<AVLDiskNode>(AllocateNode(), new Word(word));
+		auto r = std::make_shared<AVLDiskNode>(AllocateNode(), MaxKeyLen, new Word(word));
 		RootID = r->ID;
 
 		commit(r, true);
@@ -121,7 +127,7 @@ void DiskAVL::add(std::string word)
 	}
 
 	// We didn't find the node already, so we have to insert a new one
-	auto toInsert = std::make_shared<AVLDiskNode>(AllocateNode(), new Word(word));
+	auto toInsert = std::make_shared<AVLDiskNode>(AllocateNode(), MaxKeyLen, new Word(word));
 	// Commit the new node to disk so it is available if needed
 	commit(toInsert, true);
 
@@ -251,30 +257,13 @@ std::unique_ptr<Word> DiskAVL::find(std::string key)
 std::shared_ptr<AVLDiskNode> DiskAVL::load(unsigned int id)
 {
 	if (id == 0) return nullptr;
-
-	std::fstream f(TreePath, std::ios::binary | std::ios::in);
-
-	if (!f.good())
-	{
-		f.close();
-		throw std::runtime_error("Unable to open tree for read: " + TreePath);
-	}
 	readCount++;
 
 	// Skip the metadata
-	f.seekg(sizeof NextNodeID + sizeof RootID, std::ios::beg);
-
-	// Skip nodes until we get to the node we're looking for
-	for (auto i = 0; i < id - 1; i++)
-	{
-		skipReadNode(f);
-	}
+	FileHandle.seekg(sizeof NextNodeID + sizeof RootID + (id-1)*(MaxKeyLen + 13), std::ios::beg);
 
 	// Read the node from disk
-	auto node = std::make_shared<AVLDiskNode>(id, f);
-
-	// Release the file handle
-	f.close();
+	auto node = std::make_shared<AVLDiskNode>(id, MaxKeyLen, FileHandle);
 
 	return node;
 }
@@ -282,60 +271,35 @@ std::shared_ptr<AVLDiskNode> DiskAVL::load(unsigned int id)
 // Write the specified node (and optinally the tree metadata) to disk
 void DiskAVL::commit(std::shared_ptr<AVLDiskNode> node, bool includeBase)
 {
-	std::fstream f(TreePath, std::ios::binary | std::ios::in | std::ios::out);
-
-	if (!f.good())
-	{
-		f.close();
-		throw std::runtime_error("Unable to open tree for read or create: " + TreePath);
-	}
-
 	writeCount++;
 	readCount++;
 	
 	if(includeBase)
 	{
-		utils::write_binary(f, NextNodeID);
-		utils::write_binary(f, RootID);
-		f.flush();
+		FileHandle.seekp(0, std::ios::beg);
+		utils::write_binary(FileHandle, NextNodeID);
+		utils::write_binary(FileHandle, RootID);
 	}
 	else
 	{
 		// We're noot writing the base metadata, skip over it
-		f.seekp(sizeof(NextNodeID) + sizeof(RootID), std::ios::beg);
+		FileHandle.seekp(sizeof(NextNodeID) + sizeof(RootID), std::ios::beg);
 	}
 
 	// Skip any nodes before this node and seek the writer
-	for (unsigned short i = 0; i < node->ID - 1; i++)
-	{
-		skipReadNode(f);
-	}
+	FileHandle.seekg((node->ID-1)*(MaxKeyLen + 13), std::ios::cur);
 
-	node->write(f);
-
-	f.close();
+	node->write(FileHandle);
 }
 
 // Write the tree metadata to disk
 void DiskAVL::commitBase(bool append)
 {
-	auto flags = std::ios::binary | std::ios::out;
-	if (append) flags |= std::ios::in;
-
-	std::fstream f(TreePath, flags);
-
-	if (!f.good())
-	{
-		f.close();
-		throw std::runtime_error("Unable to open tree for write or create: " + TreePath);
-	}
-
 	writeCount++;
 
-	utils::write_binary(f, NextNodeID);
-	utils::write_binary(f, RootID);
-
-	f.close();
+	FileHandle.seekp(0, std::ios::beg);
+	utils::write_binary(FileHandle, NextNodeID);
+	utils::write_binary(FileHandle, RootID);
 }
 
 // Perform rotations about the specified nodes to keep the tree balanced

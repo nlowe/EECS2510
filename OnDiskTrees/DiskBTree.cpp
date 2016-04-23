@@ -34,44 +34,45 @@
 DiskBTree::DiskBTree(std::string path, uint16_t branchingFactor, uint16_t maxKeySize)
 	: TreePath(path), TFactor(branchingFactor), MaxKeySize(maxKeySize)
 {
-	std::fstream reader;
-	reader.open(path, std::ios::binary | std::ios::in);
+	// Ensure the directory the tree should be placed in exists
+	utils::createDirectories(utils::parent(path));
+
+	FileHandle.open(path, std::ios::binary | std::ios::in | std::ios::out);
 
 	readCount++;
 
-	if(!reader.good())
+	if(!FileHandle.good())
 	{
-		// Ensure the directory the tree should be placed in exists
-		utils::createDirectories(utils::parent(path));
-
-		// We have to commit the base first instead of with the first node
-		// since there is no way to distinguish between the file not existing
-		// and an IO error
-		commitBase();
+		// We have to do this dance to ensure the file gets created...
+		FileHandle.close();
+		FileHandle.open(path, std::ios::out);
+		FileHandle.close();
+		FileHandle.open(path, std::ios::binary | std::ios::in | std::ios::out);
 	
 		// Probably a new tree, try to commit the empty metadata
-		auto x = new BTreeNode(AllocateNode(), TFactor, MaxKeySize);
+		auto x = std::make_shared<BTreeNode>(AllocateNode(), TFactor, MaxKeySize);
 		x->isLeaf = true;
 		RootID = x->ID;
 		commit(x, true);
-
-		delete x;
 	}
 	else
 	{
 		// Existing tree
-		utils::read_binary(reader, NextNode);
-		utils::read_binary(reader, RootID);
-		utils::read_binary(reader, TFactor);
-		utils::read_binary(reader, MaxKeySize);
+		utils::read_binary(FileHandle, NextNode);
+		utils::read_binary(FileHandle, RootID);
+		utils::read_binary(FileHandle, TFactor);
+		utils::read_binary(FileHandle, MaxKeySize);
 	}
 
-	reader.close();
+	FileHandle.flush();
+	FileHandle.close();
+	FileHandle.open(path, std::ios::binary | std::ios::in | std::ios::out);
 }
 
 
 DiskBTree::~DiskBTree()
 {
+	if (FileHandle.is_open()) FileHandle.close();
 }
 
 // Adds the word to the tree. If the word already exists, its occurrance count is incremeneted
@@ -85,7 +86,7 @@ void DiskBTree::add(std::string key)
 	if(r->isFull())
 	{
 		// If the root node is full, we have to push a new root out to the top
-		auto s = new BTreeNode(AllocateNode(), TFactor, MaxKeySize);
+		auto s = std::make_shared<BTreeNode>(AllocateNode(), TFactor, MaxKeySize);
 
 		RootID = s->ID;
 		s->isLeaf = false;
@@ -93,15 +94,11 @@ void DiskBTree::add(std::string key)
 		commit(s, true);
 		split(s, 0, r);
 		insertNonFull(s, key);
-
-		delete s;
 	}
 	else
 	{
 		insertNonFull(r, key);
 	}
-
-	delete r;
 }
 
 // Performs an in-order traversal on the sub-tree from the specified node,
@@ -118,8 +115,6 @@ void DiskBTree::inOrderPrintFrom(uint32_t id)
 		std::cout << node->Keys[i]->key << ": " << node->Keys[i]->count << std::endl;
 	}
 	inOrderPrintFrom(node->Children[node->KeyCount]);
-
-	delete node;
 }
 
 // Search the specified subtree for the specified key
@@ -148,109 +143,70 @@ std::unique_ptr<Word> DiskBTree::findFrom(uint32_t id, std::string key)
 		res = findFrom(x->Children[i-1], key);
 	}
 	
-	delete x;
-	
 	return res;
 }
 
 // Attempt to load the specified node from disk. A runtime
 // exception is thrown if the node could not be read
-BTreeNode* DiskBTree::load(uint32_t id)
+std::shared_ptr<BTreeNode> DiskBTree::load(uint32_t id)
 {
 	if (id == 0) return nullptr;
-
-	std::fstream f(TreePath, std::ios::binary | std::ios::in);
-
-	if (!f.good())
-	{
-		f.close();
-		throw std::runtime_error("Unable to open tree for read: " + TreePath);
-	}
 	readCount++;
 
 	// Skip the metadata
-	f.seekg(sizeof(NextNode) + sizeof(RootID) + sizeof(TFactor) + sizeof(MaxKeySize), std::ios::beg);
+	FileHandle.seekg(
+		sizeof(NextNode) + sizeof(RootID) + sizeof(TFactor) + sizeof(MaxKeySize) +
+		(id - 1) * ((MaxKeySize + 4) * MaxNumKeys() + 4 * (MaxNumKeys() + 1))
+	, std::ios::beg);
 
-	// Skip nodes until we get to the node we're looking for
-	for (auto i = 0; i < id - 1; i++)
-	{
-		skipReadNode(f);
-	}
-
-	auto node = new BTreeNode(id, TFactor, MaxKeySize, f);
-
-	f.close();
-
-	return node;
+	return std::make_shared<BTreeNode>(id, TFactor, MaxKeySize, FileHandle);
 }
 
 // Commit the specified node (and optionally the tree metadata) to disk
-void DiskBTree::commit(BTreeNode* node, bool includeBase)
+void DiskBTree::commit(std::shared_ptr<BTreeNode> node, bool includeBase)
 {
-	std::fstream f(TreePath, std::ios::binary | std::ios::in | std::ios::out);
-
-	if (!f.good() && !includeBase)
-	{
-		f.close();
-		throw std::runtime_error("Unable to open tree for read or create: " + TreePath);
-	}
-
 	writeCount++;
 	readCount++;
 
 	if(includeBase)
 	{
-		utils::write_binary(f, NextNode);
-		utils::write_binary(f, RootID);
-		utils::write_binary(f, TFactor);
-		utils::write_binary(f, MaxKeySize);
-		f.flush();
+		FileHandle.seekp(0, std::ios::beg);
+		utils::write_binary(FileHandle, NextNode);
+		utils::write_binary(FileHandle, RootID);
+		utils::write_binary(FileHandle, TFactor);
+		utils::write_binary(FileHandle, MaxKeySize);
 	}
 	else
 	{
 		// We're noot writing the base metadata, skip over it
-		f.seekp(sizeof(NextNode) + sizeof(RootID) + sizeof(TFactor) + sizeof(MaxKeySize), std::ios::beg);
+		FileHandle.seekp(sizeof(NextNode) + sizeof(RootID) + sizeof(TFactor) + sizeof(MaxKeySize), std::ios::beg);
 	}
 
 	// Skip any nodes before this node and seek the writer
-	for (unsigned short i = 0; i < node->ID - 1; i++)
-	{
-		skipReadNode(f);
-	}
+	FileHandle.seekp((node->ID - 1) * ((MaxKeySize + 4) * MaxNumKeys() + 4 * (MaxNumKeys() + 1)), std::ios::cur);
 
-	node->write(f);
+	node->write(FileHandle);
 
-	f.close();
+	FileHandle.flush();
 }
 
 // Write the tree metadata to disk
 void DiskBTree::commitBase(bool append)
 {
-	auto flags = std::ios::binary | std::ios::out;
-	if (append) flags |= std::ios::in;
-
-	std::fstream f(TreePath, flags);
-
-	if (!f.good())
-	{
-		f.close();
-		throw std::runtime_error("Unable to open tree for write or create: " + TreePath);
-	}
-
 	writeCount++;
 
-	utils::write_binary(f, NextNode);
-	utils::write_binary(f, RootID);
-	utils::write_binary(f, TFactor);
-	utils::write_binary(f, MaxKeySize);
+	utils::write_binary(FileHandle, NextNode);
+	utils::write_binary(FileHandle, RootID);
+	utils::write_binary(FileHandle, TFactor);
+	utils::write_binary(FileHandle, MaxKeySize);
 
-	f.close();
+	FileHandle.flush();
 }
 
 // Insert the specified key k into the guaranteed non-full node x
 // Note that one or more children of x may be full. They will be
 // split if needed.
-void DiskBTree::insertNonFull(BTreeNode* x, std::string k)
+void DiskBTree::insertNonFull(std::shared_ptr<BTreeNode> x, std::string k)
 {
 	// Are we inserting the first element?
 	if(x->isEmpty())
@@ -313,7 +269,6 @@ void DiskBTree::insertNonFull(BTreeNode* x, std::string k)
 				{
 					y->Keys[j]->count++;
 					commit(y);
-					delete y;
 					return;
 				}
 				
@@ -331,26 +286,22 @@ void DiskBTree::insertNonFull(BTreeNode* x, std::string k)
 
 		// The child index we're looking at may have changed
 		// Re-Load it
-		delete y;
 		y = load(x->Children[i]);
-
 		insertNonFull(y, k);
-		delete y;
 	}
 }
 
 // Split the child of x at the specified index, promoting the median into x
-void DiskBTree::split(BTreeNode* x, uint16_t idx)
+void DiskBTree::split(std::shared_ptr<BTreeNode> x, uint16_t idx)
 {
 	auto y = load(x->Children[idx]);
 	split(x, idx, y);
-	delete y;
 }
 
 // Split the child of x at the specified index (that is already loaded and available at y)
-void DiskBTree::split(BTreeNode* x, uint16_t i, BTreeNode* y)
+void DiskBTree::split(std::shared_ptr<BTreeNode> x, uint16_t i, std::shared_ptr<BTreeNode> y)
 {
-	auto z = new BTreeNode(AllocateNode(), TFactor, MaxKeySize);
+	auto z = std::make_shared<BTreeNode>(AllocateNode(), TFactor, MaxKeySize);
 	z->isLeaf = y->isLeaf;
 	z->KeyCount = y->KeyCount = TFactor - 1;
 
@@ -395,7 +346,4 @@ void DiskBTree::split(BTreeNode* x, uint16_t i, BTreeNode* y)
 	commit(x);
 	commit(y);
 	commit(z, true);
-
-	// And clean up
-	delete z;
 }

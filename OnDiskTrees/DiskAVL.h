@@ -34,17 +34,21 @@
 #include "Word.h"
 #include "Utils.h"
 #include "IWordCounter.h"
+#include <cassert>
 
 // An AVL Tree node that is stored on disk
 //
-// 2 bytes:  unsigned short containing the length of the key
-// variable: node key
+// MaxKeyLength: node key
 // 4 bytes:  unsigned integer containing the number of times the word appears
 // 1 byte:   signed char containing the balance factor of the node
 // 4 bytes:  unsigned integer containing the ID of the left child, 0 if none
 // 4 bytes:  unsigned integer containing the ID of the right child, 0 if none
 struct AVLDiskNode
 {
+	// The maximum allowed length of keys for this tree. When written to disk
+	// the keys are padded with 0x00 up this length
+	const unsigned short MaxKeyLen;
+
 	// The ID of the node
 	unsigned int ID;
 	// The word payload the node contains
@@ -56,21 +60,21 @@ struct AVLDiskNode
 	// The ID of the right child
 	uint32_t RightID;
 
-	explicit AVLDiskNode(int id, Word* payload) : ID(id), Payload(payload), BalanceFactor(0), LeftID(0), RightID(0) {}
+	explicit AVLDiskNode(int id, unsigned short maxKeyLen, Word* payload) : MaxKeyLen(maxKeyLen), ID(id), Payload(payload), BalanceFactor(0), LeftID(0), RightID(0) {}
 
-	explicit AVLDiskNode(int id, std::fstream& f) : ID(id), BalanceFactor(0), LeftID(0), RightID(0)
+	explicit AVLDiskNode(int id, unsigned short maxKeyLen, std::fstream& f) : MaxKeyLen(maxKeyLen), ID(id), BalanceFactor(0), LeftID(0), RightID(0)
 	{
-		unsigned short keylen;
-		utils::read_binary(f, keylen);
-
-		std::string buff;
-		buff.resize(keylen);
-		f.read(const_cast<char*>(buff.c_str()), keylen);
+		auto buff = new char[MaxKeyLen + 1]{ 0 };
+		f.read(buff, MaxKeyLen);
 
 		uint32_t count;
 		utils::read_binary(f, count);
 
+		// Check to see if we even have a valid string (unused keys are just filled with null bytes)
+		assert(buff[0] != 0x00);
 		Payload = new Word(std::string(buff), count);
+
+		delete[] buff;
 
 		utils::read_binary(f, BalanceFactor);
 		utils::read_binary(f, LeftID);
@@ -84,12 +88,14 @@ struct AVLDiskNode
 
 	void write(std::fstream& f) const
 	{
-		auto buff = Payload->key.c_str();
-		unsigned short len = strlen(buff);
+		// Write the key...
+		auto buff = Payload->key;
+		buff.resize(MaxKeyLen, 0x00);
+		f.write(const_cast<char*>(buff.c_str()), MaxKeyLen);
 
-		utils::write_binary(f, len);
-		f.write(buff, strlen(buff));
+		// ...And it's occurrance count
 		utils::write_binary(f, Payload->count);
+
 		utils::write_binary(f, BalanceFactor);
 		utils::write_binary(f, LeftID);
 		utils::write_binary(f, RightID);
@@ -111,8 +117,7 @@ struct AVLDiskNode
 // 4 bytes: unsigned int containing the next node id
 // 4 bytes: the ID of the root node, 0 if none
 // variable: For each node in the tree
-//     2 bytes:  unsigned short containing the length of the key
-//     variable: node key
+//     MaxKeyLen: node key
 //     4 bytes:  unsigned integer containing the number of times the word appears
 //     1 byte:   signed char containing the balance factor of the node
 //     4 bytes:  unsigned integer containing the ID of the left child, 0 if none
@@ -122,7 +127,7 @@ struct AVLDiskNode
 class DiskAVL : public IWordCounter
 {
 public:
-	explicit DiskAVL(std::string path);
+	explicit DiskAVL(std::string path, unsigned short maxKeyLen);
 	~DiskAVL();
 
 	// Adds the word to the tree. If the word already exists, its occurrance count is incremeneted
@@ -154,6 +159,10 @@ private:
 
 	// The path on disk where the tree resides.
 	std::string    TreePath = "";
+	// The maximum length of a key
+	unsigned short MaxKeyLen;
+	// The file handle to the tree on disk
+	std::fstream   FileHandle;
 	// The ID of the next node to be allocated
 	unsigned int   NextNodeID = 1;
 	// The ID of the root node
@@ -173,18 +182,6 @@ private:
 	void commit(std::shared_ptr<AVLDiskNode> node, bool includeBase = false);
 	// Write the tree metadata to disk
 	void commitBase(bool append=false);
-
-	// Skip over the next node in the specified stream
-	static void skipReadNode(std::fstream& f)
-	{
-		unsigned short len;
-		utils::read_binary(f, len);
-
-		auto offset = len + 13;
-
-		// Skip the key and other data
-		f.seekg(offset, std::ios::cur);
-	}
 
 	// Performs an in-order traversal on the sub-tree from the specified node,
 	// printing out the keys and their occurrance counts

@@ -78,7 +78,7 @@ struct BTreeNode
 		// Read the keys
 		for (auto i = 0; i < MaxNumKeys(); i++)
 		{
-			auto buff = new char[MaxKeyLen];
+			auto buff = new char[MaxKeyLen + 1]{ 0 };
 			f.read(buff, maxlen);
 
 			uint32_t count;
@@ -206,7 +206,10 @@ public:
 	bool isEmpty() const { return RootID == 0; }
 
 private:
+	// The path to the tree
 	std::string TreePath = "";
+	// The file handle used for accessing the tree
+	std::fstream FileHandle;
 
 	// The ID of the next node to be allocated
 	uint32_t NextNode = 1;
@@ -235,19 +238,13 @@ private:
 
 	// Attempt to load the specified node from disk. A runtime
 	// exception is thrown if the node could not be read
-	BTreeNode* load(uint32_t id);
+	std::shared_ptr<BTreeNode> load(uint32_t id);
 
 	// Commit the specified node (and optionally the tree metadata) to disk
-	void commit(BTreeNode* node, bool includeBase = false);
+	void commit(std::shared_ptr<BTreeNode> node, bool includeBase = false);
 	
 	// Write the tree metadata to disk
 	void commitBase(bool append=false);
-
-	// Skip over the next node in the specified stream
-	void skipReadNode(std::fstream& f) const
-	{
-		f.seekg((MaxKeySize + 4) * MaxNumKeys() + 4 * (MaxNumKeys() + 1), std::ios::cur);
-	}
 
 	// Get statistics about the sub-tree from the specified node, such as its
 	// height and the number of total and distinct words
@@ -284,12 +281,12 @@ private:
 	// Insert the specified key k into the guaranteed non-full node x
 	// Note that one or more children of x may be full. They will be
 	// split if needed.
-	void insertNonFull(BTreeNode* x, std::string k);
+	void insertNonFull(std::shared_ptr<BTreeNode> x, std::string k);
 
 	// Split the child of x at the specified index, promoting the median into x
-	void split(BTreeNode* x, uint16_t idx);
+	void split(std::shared_ptr<BTreeNode> x, uint16_t idx);
 	// Split the child of x at the specified index (that is already loaded and available at y)
-	void split(BTreeNode* x, uint16_t idx, BTreeNode* y);
+	void split(std::shared_ptr<BTreeNode> x, uint16_t idx, std::shared_ptr<BTreeNode> y);
 
 };
 

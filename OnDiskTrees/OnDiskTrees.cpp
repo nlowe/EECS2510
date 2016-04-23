@@ -145,13 +145,24 @@ int runFileBenchmarks(Options options)
 	}
 
 	// initialize the trees
-	avlTree = new DiskAVL("test.avl");
+	avlTree = new DiskAVL("test.avl", options.MaxKeySize);
 	btree = new DiskBTree("test.btree", options.TFactor, options.MaxKeySize);
 
 	// Run the benchmarks, recording the time
 	auto overhead = benchmarkFile(nullptr, path);
-	auto avlTime =  benchmarkFile(avlTree, path);
-	auto btreeTime = benchmarkFile(btree, path);
+
+	// Run the benchmarks and record the times
+	double avlTime = 0.0;
+	double btreeTime = 0.0;
+
+	try
+	{
+		avlTime = benchmarkFile(avlTree, path);
+		btreeTime = benchmarkFile(btree, path);
+	}catch(exception ex){
+		cout << "An error occurred while running benchmarks: " << ex.what() << endl;
+		return -1;
+	}
 
 	auto avlStats = avlTree->getDocumentStatistics();
 	auto btreeStats = btree->getDocumentStatistics();
@@ -164,7 +175,7 @@ int runFileBenchmarks(Options options)
 			cout << "File,Overhead,ATime,AHeight,ADist,ATotal,AComp,ARef,ABal,ARead,AWrite,BTime,BHeight,BDist,BTotal,BComp,BRef,BRead,BWrite" << endl;
 		}
 		cout << '"' << path << "\"," << overhead << ',';
-		cout << avlTime << ',' << avlStats->TreeHeight << ',' << avlStats->DistinctWords << ',' << avlStats->TotalWords << ',' << avlTree->getComparisonCount() << ',' << avlTree->getReferenceChanges() << ',' << avlTree->getBalanceFactorChangeCount() << ',' << avlTree->GetReadCount() << ',' << avlTree->GetWriteCount();
+		cout << avlTime << ',' << avlStats->TreeHeight << ',' << avlStats->DistinctWords << ',' << avlStats->TotalWords << ',' << avlTree->getComparisonCount() << ',' << avlTree->getReferenceChanges() << ',' << avlTree->getBalanceFactorChangeCount() << ',' << avlTree->GetReadCount() << ',' << avlTree->GetWriteCount() << ',';
 		cout << btreeTime << ',' << btreeStats->TreeHeight << ',' << btreeStats->DistinctWords << ',' << btreeStats->TotalWords << ',' << btree->getComparisonCount() << ',' << btree->getReferenceChanges() << ',' << btree->GetReadCount() << ',' << btree->GetWriteCount() << endl;
 	}
 	else
@@ -203,12 +214,21 @@ int runRandomBenchmarks(Options options)
 	}
 
 	// Initialize the trees
-	avlTree = new DiskAVL("test.avl");
+	avlTree = new DiskAVL("test.avl", options.MaxKeySize);
 	btree = new DiskBTree("test.btree", options.TFactor, options.MaxKeySize);
 
 	// Run the benchmarks and record the times
-	auto avlTime = benchmarkRandom(avlTree, options.RandomCount, options.RandomSize);
-	auto btreeTime = benchmarkRandom(btree, options.RandomCount, options.RandomSize);
+	double avlTime = 0.0;
+	double btreeTime = 0.0;
+
+	try
+	{
+		avlTime = benchmarkRandom(avlTree, options.RandomCount, options.RandomSize);
+		btreeTime = benchmarkRandom(btree, options.RandomCount, options.RandomSize);
+	}catch(exception ex){
+		cout << "An error occurred while running benchmarks: " << ex.what() << endl;
+		return -1;
+	}
 
 	auto avlStats = avlTree->getDocumentStatistics();
 	auto btreeStats = btree->getDocumentStatistics();
@@ -221,7 +241,7 @@ int runRandomBenchmarks(Options options)
 			cout << "Count,Size,ATime,AHeight,ADist,ATotal,AComp,ARef,ABal,ARead,AWrite,BTime,BHeight,BDist,BTotal,BComp,BRef,BRead,BWrite" << endl;
 		}
 		cout << options.RandomCount << ',' << options.RandomSize << ',';
-		cout << avlTime << ',' << avlStats->TreeHeight << ',' << avlStats->DistinctWords << ',' << avlStats->TotalWords << ',' << avlTree->getComparisonCount() << ',' << avlTree->getReferenceChanges() << ',' << avlTree->getBalanceFactorChangeCount() << ',' << avlTree->GetReadCount() << ',' << avlTree->GetWriteCount();
+		cout << avlTime << ',' << avlStats->TreeHeight << ',' << avlStats->DistinctWords << ',' << avlStats->TotalWords << ',' << avlTree->getComparisonCount() << ',' << avlTree->getReferenceChanges() << ',' << avlTree->getBalanceFactorChangeCount() << ',' << avlTree->GetReadCount() << ',' << avlTree->GetWriteCount() << ',';
 		cout << btreeTime << ',' << btreeStats->TreeHeight << ',' << btreeStats->DistinctWords << ',' << btreeStats->TotalWords << ',' << btree->getComparisonCount() << ',' << btree->getReferenceChanges() << ',' << btree->GetReadCount() << ',' << btree->GetWriteCount() << endl;
 	}
 	else
@@ -263,7 +283,7 @@ double benchmarkFile(IWordCounter* tree, string path)
 	{
 		size_t prev = 0;
 		size_t pos;
-		while ((pos = line.find_first_of(" \t-'\";:,.!?()[]", prev)) != string::npos)
+		while ((pos = line.find_first_of(" \t-'\";:,.!?()[]“”’‘—", prev)) != string::npos)
 		{
 			if (pos > prev && tree != nullptr) tree->add(line.substr(prev, pos - prev));
 			prev = pos + 1;
