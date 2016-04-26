@@ -25,14 +25,41 @@
  * SOFTWARE.
  */
 #include "stdafx.h"
+#include <iostream>
+
 #include "SpanningTree.h"
 
 
 SpanningTree::SpanningTree()
 {
+	edges = new MinPriorityQueue<VertexPair>([](VertexPair* lhs, VertexPair* rhs)
+	{
+		auto firstKey = lhs->A->Key.compare(rhs->A->Key);
+		return firstKey == 0 ? lhs->B->Key.compare(rhs->B->Key) : firstKey;
+	}, 16);
 }
 
 
 SpanningTree::~SpanningTree()
 {
+	delete edges;
+}
+
+void SpanningTree::accept(VertexPair* edge) const
+{
+	edges->enqueue(edge);
+}
+
+void SpanningTree::print() const
+{
+	auto totalWeight = 0.0;
+	edges->each([&](VertexPair* e) { totalWeight += e->EdgeWeight; });
+
+	std::cout << totalWeight << std::endl;
+	
+	while(edges->Size() > 0)
+	{
+		auto edge = edges->dequeue();
+		std::cout << edge->A->Key << "-" << edge->B->Key << ": " << edge->EdgeWeight << std::endl;
+	}
 }

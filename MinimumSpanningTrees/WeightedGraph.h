@@ -28,6 +28,37 @@
 #include <string>
 #include <fstream>
 
+#include "LinkedList.h"
+#include "MinPriorityQueue.h"
+
+// A wrapper for a vertex in a Graph
+struct Vertex
+{
+	explicit Vertex(uint32_t id, std::string k) : ID(id), Key(k) {}
+
+	bool operator==(const Vertex& rhs) const
+	{
+		return Key == rhs.Key;
+	}
+
+	const uint32_t ID;
+	const std::string Key;
+};
+
+struct VertexPair
+{
+	const Vertex* A;
+	const Vertex* B;
+	const double EdgeWeight;
+
+	explicit VertexPair(Vertex* a, Vertex* b, double w) : A(a), B(b), EdgeWeight(w) {}
+
+	bool operator==(const VertexPair& rhs) const
+	{
+		return (A->Key == rhs.A->Key || A->Key == rhs.B->Key) && (B->Key == rhs.B->Key || B->Key == rhs.A->Key) && EdgeWeight == rhs.EdgeWeight;
+	}
+};
+
 // A weighted, non-directed graph of a fixed size
 //
 // The maximum number of vertices is stored in VertexCount
@@ -37,8 +68,8 @@ struct WeightedGraph
 	explicit WeightedGraph(size_t size)
 	{
 		VertexCount = size;
-		Vertices = new std::string[VertexCount];
-		Weights = new double[VertexCount * VertexCount];
+		Vertices    = new Vertex*[VertexCount]{ nullptr };
+		Weights     = new double[VertexCount * VertexCount]{ 0 };
 	}
 
 	explicit WeightedGraph(std::ifstream& reader)
@@ -47,13 +78,15 @@ struct WeightedGraph
 		getline(reader, line);
 		VertexCount = stoull(line);
 
-		Vertices = new std::string[VertexCount];
+		Vertices = new Vertex*[VertexCount];
 		Weights  = new double[VertexCount * VertexCount];
 
 		// Load the vertex names
 		for(auto i = 0; i < VertexCount; i++)
 		{
-			getline(reader, Vertices[i]);
+			std::string k;
+			getline(reader, k);
+			Vertices[i] = new Vertex(i, k);
 			if (reader.bad()) throw std::runtime_error("Incomplete or corrupt graph file");
 		}
 
@@ -77,6 +110,15 @@ struct WeightedGraph
 
 	~WeightedGraph()
 	{
+		for(auto i = 0; i < VertexCount; i++)
+		{
+			if(Vertices[i] != nullptr)
+			{
+				delete Vertices[i];
+				Vertices[i] = nullptr;
+			}
+		}
+
 		delete[] Vertices;
 		delete[] Weights;
 	}
@@ -85,7 +127,13 @@ struct WeightedGraph
 	size_t VertexCount;
 
 	// Actually an array of strings containing the vertex names
-	std::string* Vertices;
+	Vertex** Vertices;
+
+	// Get the weight between the two specified vertices
+	double GetWeight(Vertex*& A, Vertex*& B) const
+	{
+		return GetWeight(A->ID, B->ID);
+	}
 
 	// Get the entry in the weight matrix at the specified row and column
 	double GetWeight(size_t r, size_t c) const
@@ -101,6 +149,24 @@ struct WeightedGraph
 		if (r >= VertexCount || c >= VertexCount) throw std::domain_error("Index out of bounds");
 
 		Weights[r * VertexCount + c] = w;
+	}
+
+	// Returns a minimum priority queue containing all edges sorted by edge weight
+	MinPriorityQueue<VertexPair>* Edges() const
+	{
+		auto e = new MinPriorityQueue<VertexPair>([](VertexPair* a, VertexPair* b) { return a->EdgeWeight - b->EdgeWeight; }, VertexCount);
+
+		for(auto i = 0; i < VertexCount - 1; i++)
+		{
+			for(auto j = i+1; j < VertexCount; j++)
+			{
+				auto w = GetWeight(i, j);
+
+				if(w > 0) e->enqueue(new VertexPair(Vertices[i], Vertices[j], w));
+			}
+		}
+
+		return e;
 	}
 private:
 	// Actually an array of doubles containing the weights from a vertex to another vertex

@@ -30,7 +30,19 @@
     <ClInclude Include="Options.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="LinkedList.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MinPriorityQueue.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="utils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="SpanningTree.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Verbose.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

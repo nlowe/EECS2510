@@ -1,5 +1,5 @@
 /*
- * SpanningTree.h - Interface for a minimum spanning tree
+ * SpanningTree.h - Interface for a spanning tree
  *
  * Built for EECS2510 - Nonlinear Data Structures
  *	at The University of Toledo, Spring 2016
@@ -26,7 +26,8 @@
  */
 
 #pragma once
-#include <string>
+#include "WeightedGraph.h"
+#include "MinPriorityQueue.h"
 
 class SpanningTree
 {
@@ -34,8 +35,11 @@ public:
 	SpanningTree();
 	~SpanningTree();
 
-	void Take(std::string v, double w);
+	void accept(VertexPair* edge) const;
 
-	double Weight();
+	void print() const;
+
+private:
+	MinPriorityQueue<VertexPair>* edges;
 };
 

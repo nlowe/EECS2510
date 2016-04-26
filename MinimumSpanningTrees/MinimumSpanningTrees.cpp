@@ -26,18 +26,29 @@
  */
 
 #include "stdafx.h"
+#include <cassert>
 #include <iostream>
 #include <fstream>
 
+#include "LinkedList.h"
 #include "Options.h"
-#include "SpanningTree.h"
 #include "WeightedGraph.h"
+#include "SpanningTree.h"
+#include "Verbose.h"
 
 using namespace std;
 
+// Since the verbose namespace is used multiple times in different files,
+// we need to define an implementation of the enable flag in exactly one
+// translation unit so that it is shared between all units
+namespace verbose
+{
+	bool enable = true;// false;
+}
+
 void printHelp();
-SpanningTree* Kruskal(WeightedGraph& graph);
-SpanningTree* Prim(WeightedGraph& graph);
+void Kruskal(WeightedGraph& graph);
+void Prim(WeightedGraph& graph);
 
 int main(int argc, char* argv[])
 {
@@ -71,13 +82,8 @@ int main(int argc, char* argv[])
 	WeightedGraph g(reader);
 	reader.close();
 
-	auto k = Kruskal(g);
-	auto p = Prim(g);
-
-	// TODO: Print results
-
-	delete k;
-	delete p;
+	Kruskal(g);
+	Prim(g);
 
     return 0;
 }
@@ -95,14 +101,69 @@ void printHelp()
 	cout << "weight is printed to standard out. To suppress the printing of the tree, specify the -q flag" << endl;
 }
 
-SpanningTree* Kruskal(WeightedGraph& graph)
+void Kruskal(WeightedGraph& graph)
 {
-	// TODO: Implement
-	return new SpanningTree();
+	auto sets = new LinkedList<Vertex>*[graph.VertexCount]{nullptr};
+
+	for(auto i = 0; i < graph.VertexCount; i++)
+	{
+		sets[i] = new LinkedList<Vertex>();
+		sets[i]->add(graph.Vertices[i]);
+	}
+
+	verbose::write("[Kruskal] Obtaining edges...");
+	auto edges = graph.Edges();
+	auto tree = new SpanningTree();
+
+	while (!edges->isEmpty())
+	{
+		// Find the set containing A and B from this edge
+		LinkedList<Vertex> *a = nullptr, *b = nullptr;
+		auto edge = edges->dequeue();
+
+		size_t aIndex = 0;
+		size_t bIndex = 0;
+		for(auto index = 0; index < graph.VertexCount; index++)
+		{
+			if(sets[index] != nullptr)
+			{
+				if (sets[index]->Contains(const_cast<Vertex*>(edge->A)))
+				{
+					a = sets[index];
+					aIndex = index;
+				}
+				if (sets[index]->Contains(const_cast<Vertex*>(edge->B)))
+				{
+					b = sets[index];
+					bIndex = index;
+				}
+
+				if (a != nullptr && b != nullptr) break;
+			}
+		}
+
+		assert(a != nullptr && b != nullptr && edge != nullptr);
+
+		if (aIndex != bIndex)
+		{
+			verbose::write("[Kruskal] Picking edge " + edge->A->Key + "-" + edge->B->Key + ": " + std::to_string(edge->EdgeWeight));
+			a->addAll(*b);
+			sets[bIndex] = nullptr;
+			tree->accept(edge);
+		}
+		else
+		{
+			verbose::write("[Kruskal] Edge " + edge->A->Key + "-" + edge->B->Key + ": " + std::to_string(edge->EdgeWeight) + " is redundant");
+		}
+	}
+
+	verbose::write("[Kruskal] Done");
+
+	// The set of vertex pairs that represents the min-spanning tree is now in sets[aIndex]
+	tree->print();
 }
 
-SpanningTree* Prim(WeightedGraph& graph)
+void Prim(WeightedGraph& graph)
 {
 	// TODO: Implement
-	return new SpanningTree();
 }
