@@ -1,4 +1,4 @@
-/*
+﻿/*
  * MinimumSpanningTrees.cpp - Main entry point for the program
  *
  * Built for EECS2510 - Nonlinear Data Structures
@@ -35,6 +35,7 @@
 #include "WeightedGraph.h"
 #include "SpanningTree.h"
 #include "Verbose.h"
+#include "PrimVertex.h"
 
 using namespace std;
 
@@ -43,7 +44,7 @@ using namespace std;
 // translation unit so that it is shared between all units
 namespace verbose
 {
-	bool enable = true;// false;
+	bool enable = false;
 }
 
 void printHelp();
@@ -82,7 +83,10 @@ int main(int argc, char* argv[])
 	WeightedGraph g(reader);
 	reader.close();
 
+	cout << "Finding minimum spanning tree using Kruskal's algorithm..." << endl;
 	Kruskal(g);
+
+	cout << endl << "Finding minimum spanning tree using Prim's algorithm..." << endl;
 	Prim(g);
 
     return 0;
@@ -158,12 +162,71 @@ void Kruskal(WeightedGraph& graph)
 	}
 
 	verbose::write("[Kruskal] Done");
-
-	// The set of vertex pairs that represents the min-spanning tree is now in sets[aIndex]
 	tree->print();
 }
 
 void Prim(WeightedGraph& graph)
 {
-	// TODO: Implement
+//	MST-Prim(G, w, r)        # r is an arbitrarily chosen vertex
+//		for each u ∈ G.V
+//			u.key = ∞
+//			u.π = NIL
+//		r.key = 0
+//		Q = G.V                    # Q is a min-priority queue
+//		while Q ≠ ∅
+//			u = Extract-min(Q)
+//			for each v ∈ Adj[u]
+//				if v ∈ Q and w(u, v) < v.key
+//					v.π = u
+//					v.key = w(u, v)
+	verbose::write("[Prim] Initializing vertices...");
+	
+	auto pvs = new PrimVertex*[graph.VertexCount]{ nullptr };
+	auto Q = new MinPriorityQueue<PrimVertex>([](PrimVertex* lhs, PrimVertex* rhs) { return lhs->QKey - rhs->QKey; }, graph.VertexCount);
+
+	for(auto i = 0; i < graph.VertexCount; i++)
+	{
+		auto pv = new PrimVertex(graph.Vertices[i]);
+		if (i == 0) pv->QKey = 0;
+		pvs[i] = pv;
+		Q->enqueue(pv);
+	}
+
+	auto tree = new SpanningTree();
+
+	while(!Q->isEmpty())
+	{
+		auto u = Q->dequeue();
+		verbose::write("[Prim] Now analyzing connections from " + u->Key + " (local weight: " + to_string(u->QKey) + ")");
+
+		for(auto c = 0; c < graph.VertexCount; c++)
+		{
+			auto w = graph.GetWeight(u->ID, c);
+			if (w == 0) continue;
+			auto v = pvs[c];
+
+			if(Q->contains(v) && w < v->QKey)
+			{
+				verbose::write(
+					"[Prim]     Discovered a better way to get to " + v->Key +
+					" (via " + u->Key + " with weight " + to_string(w) +
+					(v->QKey == INT64_MAX ? "" : ", previous best was " + to_string(v->QKey) +
+					(v->pi == nullptr ? "" : " via " + v->pi->Key)) + ")"
+				);
+
+				v->pi = u;
+				v->QKey = w;
+				Q->notifyPriorityUpdated(v);
+			}
+		}
+	}
+
+	for(int i = graph.VertexCount - 1; i >= 0; i--)
+	{
+		auto v = pvs[i];
+		if (v->pi != nullptr) tree->accept(new VertexPair(v->pi, v, v->QKey));
+	}
+
+	verbose::write("[Prim] Done");
+	tree->print();
 }

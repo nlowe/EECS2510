@@ -34,7 +34,7 @@ template <typename T>
 class MinPriorityQueue
 {
 public:
-	MinPriorityQueue(std::function<int(T*,T*)> comparator, size_t initialCapacity) : comparator(comparator), size(0), capacity(initialCapacity)
+	MinPriorityQueue(std::function<double(T*,T*)> comparator, size_t initialCapacity) : comparator(comparator), size(0), capacity(initialCapacity)
 	{
 		elements = new T*[capacity + 1]{ nullptr };
 	}
@@ -76,6 +76,36 @@ public:
 		return elements[1];
 	}
 
+	// Someone changed the nodes priority. We need to float it up assuming the key went down
+	void notifyPriorityUpdated(T* k)
+	{
+		auto index = 0;
+		for(auto i = 1; i <= capacity; i++)
+		{
+			if(elements[i] == k)
+			{
+				index = i;
+				break;
+			}
+		}
+
+		if (index == 0) throw std::domain_error("Element not found");
+		while(index > 1 && comparator(elements[parentOf(index)], elements[index]) > 0)
+		{
+			utils::swap(elements[index], elements[parentOf(index)]);
+			index = parentOf(index);
+		}
+	}
+
+	bool contains(T* k) const
+	{
+		for(auto i = 1; i <= capacity; i++)
+		{
+			if (elements[i] == k) return true;
+		}
+		return false;
+	}
+
 	void grow(size_t s)
 	{
 		if (s <= capacity) throw std::runtime_error("Size must be greater than current size");
@@ -105,7 +135,7 @@ public:
 	size_t Size() const	{ return size; }
 	size_t Capacity() const	{ return capacity; }
 private:
-	std::function<int(T*,T*)> comparator;
+	std::function<double(T*,T*)> comparator;
 
 	size_t size;
 	size_t capacity;
