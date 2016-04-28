@@ -91,21 +91,14 @@ struct WeightedGraph
 		}
 
 		// Read the adajacency matrix
-		for(auto i=0; i <= VertexCount; i++)
+		size_t idx = 0;
+		double w;
+		while(reader >> w)
 		{
-			getline(reader, line);
-			size_t prev = 0;
-			size_t pos;
-			size_t count = 0;
-			while ((pos = line.find_first_of(" \t,", prev)) != std::string::npos)
-			{
-				if (pos > prev) SetWeight(i, count++, stod(line.substr(prev, pos - prev), nullptr));
-				prev = pos + 1;
-
-				if(count >= VertexCount || reader.bad() && !reader.eof()) throw std::runtime_error("Incomplete or corrupt graph file");
-			}
-			if (prev < line.length()) SetWeight(i, count, stod(line.substr(prev, std::string::npos), nullptr));
+			SetWeight(idx++, w);
 		}
+
+		if(idx < VertexCount * VertexCount) throw std::runtime_error("Incomplete or corrupt graph file");
 	}
 
 	~WeightedGraph()
@@ -149,6 +142,12 @@ struct WeightedGraph
 		if (r >= VertexCount || c >= VertexCount) throw std::domain_error("Index out of bounds");
 
 		Weights[r * VertexCount + c] = w;
+	}
+
+	void SetWeight(size_t idx, double w) const
+	{
+		if (idx > VertexCount * VertexCount) throw std::domain_error("Index out of bounds");
+		Weights[idx] = w;
 	}
 
 	// Returns a minimum priority queue containing all edges sorted by edge weight

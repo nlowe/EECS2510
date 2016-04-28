@@ -38,8 +38,8 @@ struct Options
 	bool help = false;
 	// Whether or not errors were encountered while parsing arguments
 	bool errors = false;
-	// Whether or not to run an in-order traversal on each tree after benchmarking
-	bool quiet = false;
+	// Whether or not to enable verbose mode
+	bool verboseEnable = false;
 
 	// Any errors encountered while parsing arguments
 	std::string errorMessage = "";
@@ -68,9 +68,9 @@ struct Options
 					errorMessage += ": Not enough parameters (must be <string>)\n";
 				}
 			}
-			else if(arg == "-q" || arg == "--quiet")
+			else if(arg == "-v" || arg == "--verbose")
 			{
-				quiet = true;
+				verboseEnable = true;
 			}
 			else
 			{

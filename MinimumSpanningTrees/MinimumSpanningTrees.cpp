@@ -59,8 +59,10 @@ int main(int argc, char* argv[])
 	if (opts.help)
 	{
 		printHelp();
+		return 0;
 	}
-	else if(opts.errors)
+	
+	if(opts.errors)
 	{
 		cout << "One or more errors occurred while parsing arguments: " << endl;
 		cout << opts.errorMessage;
@@ -69,6 +71,8 @@ int main(int argc, char* argv[])
 
 		return -1;
 	}
+
+	if (opts.verboseEnable) verbose::enable = true;
 
 	ifstream reader;
 	reader.open(opts.TestFilePath, std::ios::in);
@@ -84,10 +88,24 @@ int main(int argc, char* argv[])
 	reader.close();
 
 	cout << "Finding minimum spanning tree using Kruskal's algorithm..." << endl;
-	Kruskal(g);
+	try
+	{
+		Kruskal(g);
+	}
+	catch (exception ex)
+	{
+		cout << "Unable to calculate minimum spanning tree: " << ex.what() << endl;
+	}
 
 	cout << endl << "Finding minimum spanning tree using Prim's algorithm..." << endl;
-	Prim(g);
+	try
+	{
+		Prim(g);
+	}
+	catch (exception ex)
+	{
+		cout << "Unable to calculate minimum spanning tree: " << ex.what() << endl;
+	}
 
     return 0;
 }
@@ -97,7 +115,7 @@ void printHelp()
 	cout << "MinimumSpanningTrees <-f path> [-q]" << endl;
 	cout << "Parameters:" << endl;
 	cout << "\t-f, --file\t\tThe input file to test" << endl;
-	cout << "\t-q, --quiet\t\tJust print the weight of the minimum spanning tree" << endl;
+	cout << "\t-v, --verbose\t\tEnable verbose output" << endl;
 
 	cout << endl;
 
@@ -167,18 +185,6 @@ void Kruskal(WeightedGraph& graph)
 
 void Prim(WeightedGraph& graph)
 {
-//	MST-Prim(G, w, r)        # r is an arbitrarily chosen vertex
-//		for each u ∈ G.V
-//			u.key = ∞
-//			u.π = NIL
-//		r.key = 0
-//		Q = G.V                    # Q is a min-priority queue
-//		while Q ≠ ∅
-//			u = Extract-min(Q)
-//			for each v ∈ Adj[u]
-//				if v ∈ Q and w(u, v) < v.key
-//					v.π = u
-//					v.key = w(u, v)
 	verbose::write("[Prim] Initializing vertices...");
 	
 	auto pvs = new PrimVertex*[graph.VertexCount]{ nullptr };
