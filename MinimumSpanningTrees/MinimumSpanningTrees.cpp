@@ -47,6 +47,7 @@ namespace verbose
 	bool enable = false;
 }
 
+// Forward-declare these functions so main can be at the top as required by the project spec
 void printHelp();
 void Kruskal(WeightedGraph& graph);
 void Prim(WeightedGraph& graph);
@@ -84,6 +85,7 @@ int main(int argc, char* argv[])
 		return -1;
 	}
 
+	// Load the graph
 	WeightedGraph g(reader);
 	reader.close();
 
@@ -123,6 +125,12 @@ void printHelp()
 	cout << "weight is printed to standard out. To suppress the printing of the tree, specify the -q flag" << endl;
 }
 
+// Calculate and print out a minimum weight spanning tree of the specified graph using
+// Kruskal's algorithm:
+//
+// For each edge sorted by edge weight ascending
+//    If the edge connects two verticies that are not already in the same group
+//        add them to the tree
 void Kruskal(WeightedGraph& graph)
 {
 	auto sets = new LinkedList<Vertex>*[graph.VertexCount]{nullptr};
@@ -134,6 +142,8 @@ void Kruskal(WeightedGraph& graph)
 	}
 
 	verbose::write("[Kruskal] Obtaining edges...");
+	// Get the edges from the graph
+	// This is a minimum priority queue sorted on edge weight
 	auto edges = graph.Edges();
 	auto tree = new SpanningTree();
 
@@ -143,6 +153,7 @@ void Kruskal(WeightedGraph& graph)
 		LinkedList<Vertex> *a = nullptr, *b = nullptr;
 		auto edge = edges->dequeue();
 
+		// Locate the vertex sets that contain the vertices of this edge
 		size_t aIndex = 0;
 		size_t bIndex = 0;
 		for(auto index = 0; index < graph.VertexCount; index++)
@@ -160,6 +171,7 @@ void Kruskal(WeightedGraph& graph)
 					bIndex = index;
 				}
 
+				// If we found the sets that contain this vertex, we can break early
 				if (a != nullptr && b != nullptr) break;
 			}
 		}
@@ -168,28 +180,40 @@ void Kruskal(WeightedGraph& graph)
 
 		if (aIndex != bIndex)
 		{
-			verbose::write("[Kruskal] Picking edge " + edge->A->Key + "-" + edge->B->Key + ": " + std::to_string(edge->EdgeWeight));
+			// If the edges belong to different sets, take it
+			verbose::write("[Kruskal] Picking edge " + edge->A->Name + "-" + edge->B->Name + ": " + std::to_string(edge->EdgeWeight));
 			a->addAll(*b);
 			sets[bIndex] = nullptr;
 			tree->accept(edge);
 		}
 		else
 		{
-			verbose::write("[Kruskal] Edge " + edge->A->Key + "-" + edge->B->Key + ": " + std::to_string(edge->EdgeWeight) + " is redundant");
+			// Otherwise, the edge is redundant
+			verbose::write("[Kruskal] Edge " + edge->A->Name + "-" + edge->B->Name + ": " + std::to_string(edge->EdgeWeight) + " is redundant");
 		}
 	}
 
+	// Done! Print out the tree
 	verbose::write("[Kruskal] Done");
 	tree->print();
 }
 
+// Calculate and print out a minimum weight spanning tree of the specified graph using
+// Prim's algorithm:
+//
+// Start at any vertex
+// Until all vertices have been considered
+//     Take the lowest edge connecting the tree to any unconnected vertex
 void Prim(WeightedGraph& graph)
 {
 	verbose::write("[Prim] Initializing vertices...");
 	
+	// We need a queue on a property that gets updated frequently
+	// Wrap the vertices in PrimVertex structures and create a queue for this structure
 	auto pvs = new PrimVertex*[graph.VertexCount]{ nullptr };
 	auto Q = new MinPriorityQueue<PrimVertex>([](PrimVertex* lhs, PrimVertex* rhs) { return lhs->QKey - rhs->QKey; }, graph.VertexCount);
 
+	// Initialize all vertices
 	for(auto i = 0; i < graph.VertexCount; i++)
 	{
 		auto pv = new PrimVertex(graph.Vertices[i]);
@@ -200,24 +224,27 @@ void Prim(WeightedGraph& graph)
 
 	auto tree = new SpanningTree();
 
+	// And start taking edges
 	while(!Q->isEmpty())
 	{
 		auto u = Q->dequeue();
-		verbose::write("[Prim] Now analyzing connections from " + u->Key + " (local weight: " + to_string(u->QKey) + ")");
+		verbose::write("[Prim] Now analyzing connections from " + u->Name + " (local weight: " + to_string(u->QKey) + ")");
 
+		// Look at all vertices reachable from the specified vertex
 		for(auto c = 0; c < graph.VertexCount; c++)
 		{
 			auto w = graph.GetWeight(u->ID, c);
 			if (w == 0) continue;
 			auto v = pvs[c];
 
+			// Check to see if this is a better way to reach this vertex
 			if(Q->contains(v) && w < v->QKey)
 			{
 				verbose::write(
-					"[Prim]     Discovered a better way to get to " + v->Key +
-					" (via " + u->Key + " with weight " + to_string(w) +
+					"[Prim]     Discovered a better way to get to " + v->Name +
+					" (via " + u->Name + " with weight " + to_string(w) +
 					(v->QKey == INT64_MAX ? "" : ", previous best was " + to_string(v->QKey) +
-					(v->pi == nullptr ? "" : " via " + v->pi->Key)) + ")"
+					(v->pi == nullptr ? "" : " via " + v->pi->Name)) + ")"
 				);
 
 				v->pi = u;
@@ -227,12 +254,14 @@ void Prim(WeightedGraph& graph)
 		}
 	}
 
+	// Now simply work backwards taking the vertex and its parent as an edge
 	for(int i = graph.VertexCount - 1; i >= 0; i--)
 	{
 		auto v = pvs[i];
 		if (v->pi != nullptr) tree->accept(new VertexPair(v->pi, v, v->QKey));
 	}
 
+	// Done! Print the tree
 	verbose::write("[Prim] Done");
 	tree->print();
 }

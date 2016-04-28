@@ -31,7 +31,7 @@
 namespace verbose
 {
 	// A global flag to enable or disable verbose output
-	// The implementation is defined in main.cpp so that multiple files can access this flag
+	// The implementation is defined in MinimumSpanningTrees.cpp so that multiple files can access this flag
 	extern bool enable;
 
 	// Write a verbose message to standard output if enabled

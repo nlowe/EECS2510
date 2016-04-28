@@ -64,5 +64,8 @@
     <None Include="Test Files\test.graph">
       <Filter>Test Files</Filter>
     </None>
+    <None Include="Test Files\test2.graph">
+      <Filter>Test Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

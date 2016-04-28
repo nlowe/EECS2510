@@ -30,11 +30,16 @@
 
 #include "utils.h"
 
+// A minimum priority queue implemented with a minimum binary heap
+//
+// The user is responsible for freeing the inserted elements (only pointers to them
+// are stored)
 template <typename T>
 class MinPriorityQueue
 {
 public:
-	MinPriorityQueue(std::function<double(T*,T*)> comparator, size_t initialCapacity) : comparator(comparator), size(0), capacity(initialCapacity)
+	MinPriorityQueue(std::function<double(T*,T*)> comparator, size_t initialCapacity)
+		: comparator(comparator), size(0), capacity(initialCapacity)
 	{
 		elements = new T*[capacity + 1]{ nullptr };
 	}
@@ -44,6 +49,7 @@ public:
 		delete[] elements;
 	}
 
+	// Add the specified element to the queue
 	void enqueue(T* element)
 	{
 		if (size == capacity-1) grow(2 * capacity);
@@ -57,6 +63,7 @@ public:
 		}
 	}
 
+	// Remove and return the minimum element from the queue
 	T* dequeue()
 	{
 		if (size == 0) throw std::underflow_error("Nothing in the heap");
@@ -70,17 +77,18 @@ public:
 		return min;
 	}
 
+	// Return the minimum element from the queue without modifying the queue
 	T* peek()
 	{
 		if (size == 0) throw std::underflow_error("Nothing in the heap");
 		return elements[1];
 	}
 
-	// Someone changed the nodes priority. We need to float it up assuming the key went down
+	// Call this when the priority of a node is changed externally
 	void notifyPriorityUpdated(T* k)
 	{
 		auto index = 0;
-		for(auto i = 1; i <= capacity; i++)
+		for(auto i = 1; i <= size; i++)
 		{
 			if(elements[i] == k)
 			{
@@ -97,18 +105,20 @@ public:
 		}
 	}
 
+	// Returns true iff the specified element is in the queue
 	bool contains(T* k) const
 	{
-		for(auto i = 1; i <= capacity; i++)
+		for(auto i = 1; i <= size; i++)
 		{
 			if (elements[i] == k) return true;
 		}
 		return false;
 	}
 
+	// Increases the capacity of the queue. The new capacity must be greater than the previous capacity
 	void grow(size_t s)
 	{
-		if (s <= capacity) throw std::runtime_error("Size must be greater than current size");
+		if (s <= capacity) throw std::runtime_error("New capacity must be greater than current capacity");
 
 		T** newElements = new T*[s];
 		for(auto i = 0; i <= capacity; i++)
@@ -122,6 +132,7 @@ public:
 		capacity = s;
 	}
 
+	// Apply the specified function to all elements in the queue
 	void each(std::function<void(T*)> action)
 	{
 		for(size_t i = 1; i <= size; i++)
@@ -130,9 +141,12 @@ public:
 		}
 	}
 
+	// Returns true iff the queue contains no elements
 	bool isEmpty() const { return size == 0; }
 
+	// Returns the number of elements in the queue
 	size_t Size() const	{ return size; }
+	// Returns the maximum number of elements in the queue
 	size_t Capacity() const	{ return capacity; }
 private:
 	std::function<double(T*,T*)> comparator;
@@ -141,10 +155,14 @@ private:
 	size_t capacity;
 	T** elements;
 
+	// Returns the index of the parent of the element at the specified index
 	static size_t parentOf(size_t index) { return floor(index / 2); }
+	// Returns the index of the left child of the element at the specified index
 	static size_t leftOf(size_t index) { return 2 * index; }
+	// Returns the index of the right child of the element at the specified index
 	static size_t rightOf(size_t index) { return 2 * index + 1; }
 
+	// Ensures that the subtree at the specified index is a min-heap
 	void minHeapify(size_t index)
 	{
 		auto l = leftOf(index);

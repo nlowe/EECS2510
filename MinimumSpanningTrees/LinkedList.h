@@ -29,6 +29,7 @@
 
 struct None{};
 
+// A node in a generic linked list
 template <typename T>
 struct Node
 {
@@ -38,79 +39,71 @@ struct Node
 		if (Next != nullptr) delete Next;
 	}
 
+	// The payload of the node
 	const T* Payload;
+	// The next node in the list
 	Node<T>* Next;
 };
 
+// A generic linked list
 template <typename T>
 class LinkedList
 {
 public:
 	explicit LinkedList(){}
-	~LinkedList();
+	~LinkedList()
+	{
+		if (root != nullptr) delete root;
+	}
 
-	void add(T* key);
-	void addAll(LinkedList<T> other);
+	// Add the specified element to the list
+	void add(T* key)
+	{
+		auto n = new Node<T>(key);
+		n->Next = root;
+		root = n;
+		count++;
+	}
 
-	bool Contains(T* element);
+	// Add all elements in the specified linked list to this list
+	void addAll(LinkedList<T> other)
+	{
+		other.each([&](T* t) { add(t); });
+	}
 
-	void each(std::function<void(T*)> func);
+	// Returns true iff the specified element is in this list
+	bool Contains(T* element)
+	{
+		Node<T>* candidate = root;
 
+		while(candidate != nullptr)
+		{
+			if(candidate->Payload == element)
+			{
+				return true;
+			}
+			candidate = candidate->Next;
+		}
+
+		return false;
+	}
+
+	// Applys the specified function to every element in this list
+	void each(std::function<void(T*)> func)
+	{
+		Node<T>* candidate = root;
+
+		while(candidate != nullptr)
+		{
+			func(const_cast<T*>(candidate->Payload));
+			candidate = candidate->Next;
+		}
+	}
+
+	// Returns the number of elements this list contains
 	size_t Count() const { return count; }
 private:
 	Node<T>* root = nullptr;
 
 	size_t count = 0;
 };
-
-template <typename T>
-LinkedList<T>::~LinkedList()
-{
-	if (root != nullptr) delete root;
-}
-
-
-template <typename T>
-void LinkedList<T>::add(T* key)
-{
-	auto n = new Node<T>(key);
-	n->Next = root;
-	root = n;
-	count++;
-}
-
-template <typename T>
-void LinkedList<T>::addAll(LinkedList<T> other)
-{
-	other.each([&](T* t) { add(t); });
-}
-
-template <typename T>
-bool LinkedList<T>::Contains(T* element)
-{
-	Node<T>* candidate = root;
-
-	while(candidate != nullptr)
-	{
-		if(candidate->Payload == element)
-		{
-			return true;
-		}
-		candidate = candidate->Next;
-	}
-
-	return false;
-}
-
-template <typename T>
-void LinkedList<T>::each(std::function<void(T*)> func)
-{
-	Node<T>* candidate = root;
-
-	while(candidate != nullptr)
-	{
-		func(const_cast<T*>(candidate->Payload));
-		candidate = candidate->Next;
-	}
-}
-

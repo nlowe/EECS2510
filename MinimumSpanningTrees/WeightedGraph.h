@@ -28,41 +28,45 @@
 #include <string>
 #include <fstream>
 
-#include "LinkedList.h"
 #include "MinPriorityQueue.h"
 
 // A wrapper for a vertex in a Graph
 struct Vertex
 {
-	explicit Vertex(uint32_t id, std::string k) : ID(id), Key(k) {}
+	explicit Vertex(uint32_t id, std::string k) : ID(id), Name(k) {}
 
 	bool operator==(const Vertex& rhs) const
 	{
-		return Key == rhs.Key;
+		return Name == rhs.Name;
 	}
 
+	// The index in the vertex array this vertex resides at
 	const uint32_t ID;
-	const std::string Key;
+	// The name of this vertex
+	const std::string Name;
 };
 
+// A pair of vertices, or more commonly, an Edge
 struct VertexPair
 {
+	// The first vertex
 	const Vertex* A;
+	// The second vertex
 	const Vertex* B;
+	// The weight of the edge
 	const double EdgeWeight;
 
 	explicit VertexPair(Vertex* a, Vertex* b, double w) : A(a), B(b), EdgeWeight(w) {}
 
 	bool operator==(const VertexPair& rhs) const
 	{
-		return (A->Key == rhs.A->Key || A->Key == rhs.B->Key) && (B->Key == rhs.B->Key || B->Key == rhs.A->Key) && EdgeWeight == rhs.EdgeWeight;
+		return (A->Name == rhs.A->Name || A->Name == rhs.B->Name) && (B->Name == rhs.B->Name || B->Name == rhs.A->Name) && EdgeWeight == rhs.EdgeWeight;
 	}
 };
 
 // A weighted, non-directed graph of a fixed size
 //
 // The maximum number of vertices is stored in VertexCount
-//
 struct WeightedGraph
 {
 	explicit WeightedGraph(size_t size)
@@ -144,6 +148,7 @@ struct WeightedGraph
 		Weights[r * VertexCount + c] = w;
 	}
 
+	// Set the entry in the weight matrix at the specified index
 	void SetWeight(size_t idx, double w) const
 	{
 		if (idx > VertexCount * VertexCount) throw std::domain_error("Index out of bounds");
