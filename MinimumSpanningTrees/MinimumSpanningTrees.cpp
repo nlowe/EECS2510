@@ -114,7 +114,7 @@ int main(int argc, char* argv[])
 
 void printHelp()
 {
-	cout << "MinimumSpanningTrees <-f path> [-q]" << endl;
+	cout << "MinimumSpanningTrees <-f path> [-v]" << endl;
 	cout << "Parameters:" << endl;
 	cout << "\t-f, --file\t\tThe input file to test" << endl;
 	cout << "\t-v, --verbose\t\tEnable verbose output" << endl;
